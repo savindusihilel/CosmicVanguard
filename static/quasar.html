@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuasarWatch — Cosmic Vanguard</title>
+    <meta name="description"
+        content="Forecast quasar brightness variability using UAT-CTGRU with temporal attention for irregularly sampled astronomical time series.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Quasar Tabs styling */
+        .sf-tabs-nav {
+            display: flex;
+            gap: 0;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sf-tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-3);
+            font-size: 0.95rem;
+            font-weight: 600;
+            padding: 0.75rem 1.25rem;
+            cursor: pointer;
+            position: relative;
+            transition: color 0.2s ease;
+        }
+
+        .sf-tab-btn:hover {
+            color: var(--text-2);
+        }
+
+        .sf-tab-btn.active {
+            color: #ef4444;
+            /* Streamlit red for active tab text */
+        }
+
+        .sf-tab-btn::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #ef4444;
+            /* Streamlit red for active tab underline */
+            transform: scaleX(0);
+            transition: transform 0.2s ease;
+        }
+
+        .sf-tab-btn.active::after {
+            transform: scaleX(1);
+        }
+
+        .sf-tab-content {
+            display: none;
+            animation: fadeUp 0.3s ease-out;
+        }
+
+        .sf-tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="cv-nav scrolled" id="mainNav">
+        <div class="nav-inner">
+            <a href="/" class="nav-brand">
+                <span class="brand-icon">◆</span>
+                Cosmic<span class="brand-accent">Vanguard</span>
+            </a>
+            <div class="nav-links">
+                <a href="/galaxy" class="nav-link">GalaxyPlayground</a>
+                <a href="/quasar" class="nav-link active">QuasarWatch</a>
+                <a href="/starforge" class="nav-link">StarForge</a>
+                <a href="/transient" class="nav-link">TransientHunter</a>
+                <a href="/contact" class="nav-link nav-link-cta">Apply for Grant</a>
+            </div>
+            <button class="nav-toggle" id="navToggle" aria-label="Menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="app-container quasar-page">
+        <header>
+            <div class="logo">Quasar<span>Watch</span></div>
+            <p class="subtitle">Uncertainty-Aware Temporal Deep Learning for Quasar Light Curves</p>
+        </header>
+
+        <!-- Controls -->
+        <div class="quasar-controls">
+            <select id="sampleSelector" class="quasar-select">
+                <option value="">Select a quasar sample…</option>
+            </select>
+            <button class="btn-primary" id="runQuasarBtn" style="width:auto; padding: 0.65rem 2rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                Run Forecast
+            </button>
+        </div>
+
+        <!-- Loading -->
+        <div class="hidden" id="quasarLoading" style="text-align:center; padding: 3rem;">
+            <div class="spinner" style="margin: 0 auto 1rem;"></div>
+            <p class="spinner-text">Running model inference across 3 architectures… This may take a moment.</p>
+        </div>
+
+        <!-- Results with Tabs -->
+        <div class="hidden" class="sf-panel" id="quasarResults"
+            style="padding: 0; background: transparent; border: none;">
+
+            <div class="sf-tabs-nav" style="margin-bottom: 2rem;">
+                <button class="sf-tab-btn active" data-target="qw-tab-obs" onclick="switchQwTab(this)">📊
+                    Observations</button>
+                <button class="sf-tab-btn" data-target="qw-tab-forecast" onclick="switchQwTab(this)">📈 Forecast
+                    Comparison</button>
+                <button class="sf-tab-btn" data-target="qw-tab-attn" onclick="switchQwTab(this)">🧠 Attention
+                    Analysis</button>
+                <button class="sf-tab-btn" data-target="qw-tab-metrics" onclick="switchQwTab(this)">📋 Metrics</button>
+                <button class="sf-tab-btn" data-target="qw-tab-arch" onclick="switchQwTab(this)">🏗️
+                    Architecture</button>
+            </div>
+            <!-- TAB 1: Observations -->
+            <div class="sf-tab-content active" id="qw-tab-obs">
+                <!-- Observation stats -->
+                <div class="metrics-row" id="obsMetrics"></div>
+
+                <!-- Observation plot -->
+                <div class="chart-container">
+                    <h3>📊 Historical Light Curve</h3>
+                    <div class="chart-wrap"><canvas id="obsChart" height="300"></canvas></div>
+                </div>
+            </div>
+
+            <!-- TAB 2: Forecast -->
+            <div class="sf-tab-content" id="qw-tab-forecast">
+                <!-- Forecast plot -->
+                <div class="chart-container">
+                    <h3>📈 1-Year Forecast Comparison</h3>
+                    <div class="chart-wrap"><canvas id="forecastChart" height="350"></canvas></div>
+                </div>
+
+                <!-- Uncertainty plot -->
+                <div class="chart-container">
+                    <h3>🎯 Uncertainty Growth Over Forecast Horizon</h3>
+                    <div class="chart-wrap"><canvas id="uncertaintyChart" height="250"></canvas></div>
+                </div>
+            </div>
+
+            <!-- TAB 3: Attention -->
+            <div class="sf-tab-content" id="qw-tab-attn">
+                <!-- Attention heatmap -->
+                <div class="chart-container" id="attentionSection">
+                    <h3>🧠 Temporal Attention Heatmap — UAT-CTGRU</h3>
+                    <p class="chart-caption" style="margin-bottom:1rem; text-align:left;">
+                        Attention weights for each forecast step over historical observations.
+                        Brighter = more important. The UAT-CTGRU focuses on recent, temporally nearby observations.
+                    </p>
+                    <div class="chart-wrap"><canvas id="attentionChart" height="300"></canvas></div>
+                </div>
+            </div>
+
+            <!-- TAB 4: Metrics -->
+            <div class="sf-tab-content" id="qw-tab-metrics">
+                <!-- Metrics table -->
+                <div class="chart-container">
+                    <h3>📋 Research Results — Test Set Performance</h3>
+                    <div class="comparison-table" style="margin-top:1rem;">
+                        <div class="comp-row header">
+                            <span>Model</span><span>RMSE ↓</span><span>MAE ↓</span><span>R² ↑</span>
+                        </div>
+                        <div class="comp-row pinn-row">
+                            <span class="model-name"><span class="model-badge-inline badge-uat">Proposed</span>
+                                UAT-CTGRU</span>
+                            <span class="mono">0.382</span><span class="mono">0.281</span><span
+                                class="mono">0.958</span>
+                        </div>
+                        <div class="comp-row">
+                            <span class="model-name"><span class="model-badge-inline badge-transformer">Baseline</span>
+                                Transformer</span>
+                            <span class="mono">0.892</span><span class="mono">0.634</span><span
+                                class="mono">0.712</span>
+                        </div>
+                        <div class="comp-row">
+                            <span class="model-name"><span class="model-badge-inline badge-rnn">Baseline</span> Basic
+                                RNN</span>
+                            <span class="mono">1.495</span><span class="mono">0.878</span><span
+                                class="mono">0.358</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scientific Interpretation -->
+                <div class="sf-component-panel" style="margin-top: 2rem;">
+                    <h3>🧩 Scientific Interpretation</h3>
+                    <ul class="interpretation-text" style="padding-left: 1.5rem; margin-top: 1rem;">
+                        <li style="margin-bottom: 0.5rem;"><strong>UAT-CTGRU</strong> achieves the lowest prediction
+                            error and highest R², demonstrating strong explanatory power for quasar brightness
+                            variability.</li>
+                        <li style="margin-bottom: 0.5rem;">The <strong>Transformer</strong> improves over Basic RNN via
+                            self-attention but lacks <strong>time-awareness</strong>, limiting its performance on
+                            irregularly sampled data.</li>
+                        <li style="margin-bottom: 0.5rem;"><strong>Basic RNN</strong> fails to capture irregular
+                            temporal dependencies because it treats all time gaps identically.</li>
+                        <li style="margin-bottom: 0.5rem;">The <strong>temporal attention</strong> mechanism provides
+                            interpretability — researchers can see <em>which historical observations</em> the model
+                            focuses on for each prediction.</li>
+                        <li><strong>Calibrated uncertainty</strong> (σ) from UAT-CTGRU enables reliable confidence
+                            intervals, critical for astronomical decision-making and follow-up observation planning.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- TAB 5: Architecture -->
+            <div class="sf-tab-content" id="qw-tab-arch">
+                <!-- Architecture overview -->
+                <div class="chart-container">
+                    <h3>🏗️ Model Architecture Overview</h3>
+                    <div
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
+                        <div class="rf-metric-card">
+                            <div class="rf-metric-header"><span class="model-badge-inline badge-rnn">Baseline</span>
+                                Basic
+                                RNN</div>
+                            <p style="color: var(--text-2); font-size: 0.85rem; line-height: 1.6;">
+                                Standard GRU (hidden=64). No attention mechanism. Treats all time gaps equally,
+                                losing long-range temporal context. Cannot model irregular sampling effects.
+                            </p>
+                        </div>
+                        <div class="rf-metric-card">
+                            <div class="rf-metric-header"><span
+                                    class="model-badge-inline badge-transformer">Baseline</span>
+                                Transformer</div>
+                            <p style="color: var(--text-2); font-size: 0.85rem; line-height: 1.6;">
+                                2-layer TransformerEncoder (d=64, 4 heads). Self-attention across all tokens.
+                                Position-blind — does not account for actual time gaps between observations.
+                            </p>
+                        </div>
+                        <div class="rf-metric-card">
+                            <div class="rf-metric-header"><span class="model-badge-inline badge-uat">Proposed</span>
+                                UAT-CTGRU</div>
+                            <p style="color: var(--text-2); font-size: 0.85rem; line-height: 1.6;">
+                                CTGRU encoder (hidden=128) with learnable time decay γ. Temporal attention weighted
+                                by time proximity. Produces calibrated uncertainty estimates (μ, σ).
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Architecture Details -->
+                <div class="sf-component-panel" style="margin-top: 2rem;">
+                    <h3>🧬 CTGRU Time Decay Mechanism</h3>
+                    <p class="interpretation-text" style="margin-top: 1rem; margin-bottom: 1.5rem;">
+                        The core innovation of the CTGRU encoder is the <strong>continuous-time decay</strong>:<br>
+                        <code
+                            style="display: block; background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 4px; margin: 0.5rem 0; font-family: var(--mono); color: var(--accent-bright);">h_decayed(t) = h(t-1) × exp(-γ × Δt)</code>
+                    </p>
+                    <ul class="interpretation-text" style="padding-left: 1.5rem; margin-bottom: 2rem;">
+                        <li style="margin-bottom: 0.5rem;"><code>γ</code> (gamma) is a <strong>learnable
+                                parameter</strong> — the model learns the optimal decay rate</li>
+                        <li style="margin-bottom: 0.5rem;"><code>Δt</code> is the <strong>actual time gap</strong>
+                            between consecutive observations</li>
+                        <li style="margin-bottom: 0.5rem;">When <code>Δt</code> is small (frequent observations): decay
+                            ≈ 1, hidden state preserved</li>
+                        <li>When <code>Δt</code> is large (long gap): decay → 0, hidden state fades</li>
+                    </ul>
+                    <p class="interpretation-text">
+                        This elegantly handles the <strong>irregular sampling</strong> problem: the model's memory
+                        <strong>naturally decays</strong> during periods without observations, just as physical
+                        intuition would suggest — older measurements carry less information.
+                    </p>
+
+                    <h3 style="margin-top: 2rem;">⚡ Attention Mechanism: Transformer vs UAT-CTGRU</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1rem;">
+                        <div class="rf-metric-card">
+                            <h4 style="color: var(--text-1); font-size: 0.9rem; margin-bottom: 0.5rem;">Transformer
+                                Self-Attention</h4>
+                            <p class="interpretation-text" style="font-size: 0.85rem;">
+                                Computes attention between <strong>all pairs of tokens</strong>. Position information is
+                                via learned embeddings. It has <strong>no awareness</strong> of actual time differences.
+                                Every observation is equally accessible regardless of temporal distance.
+                            </p>
+                        </div>
+                        <div class="rf-metric-card">
+                            <h4 style="color: var(--text-1); font-size: 0.9rem; margin-bottom: 0.5rem;">UAT-CTGRU
+                                Temporal Attention</h4>
+                            <p class="interpretation-text" style="font-size: 0.85rem;">
+                                Attention is <strong>weighted by temporal proximity</strong> using a learnable time
+                                decay parameter. Recent observations get <strong>higher natural weight</strong>.
+                                Specifically designed for irregular time series.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    </div>
+    </div>
+
+    <script src="/static/quasar.js"></script>
+    <script>
+        const navToggle = document.getElementById('navToggle');
+        const navLinks = document.querySelector('.nav-links');
+        if (navToggle) navToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('open');
+            navToggle.classList.toggle('open');
+        });
+    </script>
+</body>
+
+</html>
