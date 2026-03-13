@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TransientHunter — Cosmic Vanguard</title>
+    <meta name="description"
+        content="Classify astronomical transients from photometric time series using supervised contrastive learning.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="cv-nav scrolled" id="mainNav">
+        <div class="nav-inner">
+            <a href="/" class="nav-brand">
+                <span class="brand-icon">◆</span>
+                Cosmic<span class="brand-accent">Vanguard</span>
+            </a>
+            <div class="nav-links">
+                <a href="/galaxy" class="nav-link">GalaxyPlayground</a>
+                <a href="/quasar" class="nav-link">QuasarWatch</a>
+                <a href="/starforge" class="nav-link">StarForge</a>
+                <a href="/transient" class="nav-link active">TransientHunter</a>
+                <a href="/contact" class="nav-link nav-link-cta">Apply for Grant</a>
+            </div>
+            <button class="nav-toggle" id="navToggle" aria-label="Menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="app-container transient-page" style="padding-top: 5rem; max-width: 1200px; margin: 0 auto;">
+        <header style="text-align: center; margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.5rem;">
+                <span style="font-size: 2.5rem; color: #38bdf8;">☄️</span>
+                <h1 style="font-size: 2.8rem; font-weight: 800; color: #38bdf8; margin: 0;">Astronomical Transient
+                    Classifier</h1>
+            </div>
+        </header>
+
+        <!-- Status Banner -->
+        <div id="statusBanner"
+            style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 0.75rem 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 0.75rem;">
+            <span style="color: #10b981;">✅</span>
+            <div style="display: flex; flex-direction: column;">
+                <span id="appStatusTitle" style="color: #e2e8f0; font-weight: 600; font-size: 0.9rem;">Models loaded
+                    successfully!</span>
+            </div>
+        </div>
+
+        <main>
+            <!-- Secondary Navigation (Tabs) -->
+            <div class="transient-nav-radio"
+                style="display: flex; gap: 1.5rem; justify-content: center; margin-bottom: 3rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-subtle); padding: 1rem; border-radius: 12px;">
+                <label class="nav-radio-label">
+                    <input type="radio" name="transient-tab" value="home" checked>
+                    <span>🏠 Home</span>
+                </label>
+                <label class="nav-radio-label">
+                    <input type="radio" name="transient-tab" value="flow">
+                    <span>🌌 System Flow</span>
+                </label>
+                <label class="nav-radio-label">
+                    <input type="radio" name="transient-tab" value="predict">
+                    <span>🔮 Single Prediction</span>
+                </label>
+                <label class="nav-radio-label">
+                    <input type="radio" name="transient-tab" value="batch">
+                    <span>📦 Batch Prediction</span>
+                </label>
+                <label class="nav-radio-label">
+                    <input type="radio" name="transient-tab" value="compare">
+                    <span>⚖️ Model Comparison</span>
+                </label>
+                <label class="nav-radio-label">
+                    <input type="radio" name="transient-tab" value="info">
+                    <span>ℹ️ Model Information</span>
+                </label>
+            </div>
+
+            <!-- Tab Content: Home -->
+            <div id="tab-home" class="tab-content active">
+                <div class="card" style="padding: 2.5rem; max-width: 900px; margin: 0 auto;">
+                    <h2 style="margin-bottom: 1.5rem; color: var(--accent-bright);">🏠 Welcome to the Astronomical
+                        Transient Classifier</h2>
+                    <div style="line-height: 1.8; color: var(--text-2);">
+                        <p style="margin-bottom: 1.5rem;">
+                            This platform provides advanced classification for rare and common astronomical transients
+                            using photometric time series data.
+                            Our system leverages <strong>Supervised Contrastive Learning</strong> to achieve superior
+                            feature discrimination compared to traditional methods.
+                        </p>
+
+                        <h3 style="color: var(--text-0); margin: 2rem 0 1rem; font-size: 1.1rem;">Key Features</h3>
+                        <ul
+                            style="list-style: none; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <li style="display: flex; gap: 0.75rem;"><span style="color: var(--accent);">◆</span> Single
+                                & Batch Predictions</li>
+                            <li style="display: flex; gap: 0.75rem;"><span style="color: var(--accent);">◆</span>
+                                Side-by-Side Model Comparison</li>
+                            <li style="display: flex; gap: 0.75rem;"><span style="color: var(--accent);">◆</span>
+                                Interactive System Flow Analysis</li>
+                            <li style="display: flex; gap: 0.75rem;"><span style="color: var(--accent);">◆</span>
+                                Real-time Confidence Metrics</li>
+                        </ul>
+
+                        <h3 style="color: var(--text-0); margin: 2rem 0 1rem; font-size: 1.1rem;">Supported Transient
+                            Classes</h3>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;" id="classList">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: System Flow -->
+            <div id="tab-flow" class="tab-content">
+                <div class="card" style="padding: 2rem; position: relative; overflow: hidden; min-height: 800px;">
+                    <h2 style="margin-bottom: 1rem;">🌌 System Flow Architecture</h2>
+                    <p style="color: var(--text-3); margin-bottom: 2rem;">Visualizing the end-to-end architecture of our
+                        Contrastive Learning platform.</p>
+                    <div
+                        style="width: 100%; height: 800px; border: 1px solid var(--border-subtle); border-radius: 12px; overflow: hidden;">
+                        <iframe src="/assets/transient/system_flow.html"
+                            style="width:100%; height:100%; border:none;"></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Predictions -->
+            <div id="tab-predict" class="tab-content">
+                <div class="card" style="padding: 2.5rem; margin-bottom: 2rem;">
+                    <h2
+                        style="font-size: 1.6rem; display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                        <span>🔮</span> Single Light Curve Prediction
+                    </h2>
+                    <hr style="border: none; border-top: 1px solid var(--border-subtle); margin-bottom: 1.5rem;">
+
+                    <div style="color: var(--text-2); font-size: 0.95rem; margin-bottom: 2rem;">
+                        <p style="margin-bottom: 1rem;">Upload a single light curve for classification. The light curve
+                            should contain observations with:</p>
+                        <ul style="list-style-type: disc; padding-left: 1.5rem; color: var(--text-1);">
+                            <li><strong>Time:</strong> Modified Julian Date (MJD)</li>
+                            <li><strong>Magnitude:</strong> Brightness measurement</li>
+                            <li><strong>Error:</strong> Measurement uncertainty</li>
+                            <li><strong>Band:</strong> Photometric band ('g' or 'r')</li>
+                        </ul>
+                    </div>
+
+                    <div style="margin-bottom: 2rem;">
+                        <span
+                            style="font-weight: 500; font-size: 0.85rem; color: var(--text-3); display: block; margin-bottom: 1rem;">Choose
+                            input method:</span>
+                        <div
+                            style="display: flex; gap: 1.5rem; background: rgba(15, 23, 42, 0.4); padding: 0.75rem 1.5rem; border-radius: 10px; border: 1px solid var(--border-subtle); width: fit-content;">
+                            <label class="nav-radio-label">
+                                <input type="radio" name="input-method" value="json" checked>
+                                <span>JSON Payload (API Format)</span>
+                            </label>
+                            <label class="nav-radio-label">
+                                <input type="radio" name="input-method" value="manual">
+                                <span>Manual Entry</span>
+                            </label>
+                            <label class="nav-radio-label">
+                                <input type="radio" name="input-method" value="csv">
+                                <span>Upload CSV</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Input Areas -->
+                    <div id="json-input-section" style="margin-bottom: 2rem;">
+                        <h3
+                            style="font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.0rem;">
+                            <span>📝</span> Enter JSON Payload
+                        </h3>
+                        <p style="color: var(--text-3); font-size: 0.85rem; margin-bottom: 1rem;">Paste a JSON payload
+                            matching the API request format.</p>
+
+                        <label
+                            style="font-size: 0.75rem; color: var(--text-3); margin-bottom: 0.5rem; display: block;">JSON
+                            Request Payload</label>
+                        <textarea id="jsonPayload"
+                            style="width: 100%; height: 250px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-subtle); border-radius: 8px; color: #e2e8f0; font-family: var(--mono); padding: 1rem; resize: vertical; font-size: 0.85rem;">{
+    "object_id": "TEST_SNIA_001",
+    "observations": [
+        {"time": 58000.0, "magnitude": 19.5, "error": 0.05, "band": "g"},
+        {"time": 58001.0, "magnitude": 19.2, "error": 0.04, "band": "g"},
+        {"time": 58002.0, "magnitude": 18.8, "error": 0.03, "band": "g"},
+        {"time": 58003.0, "magnitude": 18.2, "error": 0.03, "band": "g"},
+        {"time": 58004.0, "magnitude": 17.8, "error": 0.03, "band": "g"},
+        {"time": 58005.0, "magnitude": 17.5, "error": 0.03, "band": "g"},
+        {"time": 58006.0, "magnitude": 17.3, "error": 0.03, "band": "g"},
+        {"time": 58007.0, "magnitude": 17.2, "error": 0.03, "band": "g"},
+        {"time": 58008.0, "magnitude": 17.1, "error": 0.03, "band": "g"},
+        {"time": 58009.0, "magnitude": 17.2, "error": 0.03, "band": "g"},
+        {"time": 58010.0, "magnitude": 17.4, "error": 0.03, "band": "g"},
+        {"time": 58011.0, "magnitude": 17.7, "error": 0.03, "band": "g"},
+        {"time": 58012.0, "magnitude": 18.1, "error": 0.03, "band": "g"},
+        {"time": 58013.0, "magnitude": 18.5, "error": 0.04, "band": "g"},
+        {"time": 58014.0, "magnitude": 18.9, "error": 0.04, "band": "g"},
+        {"time": 58015.0, "magnitude": 19.3, "error": 0.05, "band": "g"},
+        {"time": 58000.0, "magnitude": 19.6, "error": 0.05, "band": "r"},
+        {"time": 58001.0, "magnitude": 19.3, "error": 0.04, "band": "r"},
+        {"time": 58002.0, "magnitude": 18.9, "error": 0.03, "band": "r"},
+        {"time": 58003.0, "magnitude": 18.3, "error": 0.03, "band": "r"},
+        {"time": 58004.0, "magnitude": 17.9, "error": 0.03, "band": "r"},
+        {"time": 58005.0, "magnitude": 17.6, "error": 0.03, "band": "r"},
+        {"time": 58006.0, "magnitude": 17.4, "error": 0.03, "band": "r"},
+        {"time": 58007.0, "magnitude": 17.3, "error": 0.03, "band": "r"},
+        {"time": 58008.0, "magnitude": 17.2, "error": 0.03, "band": "r"},
+        {"time": 58009.0, "magnitude": 17.3, "error": 0.03, "band": "r"},
+        {"time": 58010.0, "magnitude": 17.5, "error": 0.03, "band": "r"},
+        {"time": 58011.0, "magnitude": 17.8, "error": 0.03, "band": "r"},
+        {"time": 58012.0, "magnitude": 18.2, "error": 0.04, "band": "r"},
+        {"time": 58013.0, "magnitude": 18.6, "error": 0.04, "band": "r"},
+        {"time": 58014.0, "magnitude": 19.0, "error": 0.05, "band": "r"},
+        {"time": 58015.0, "magnitude": 19.4, "error": 0.05, "band": "r"}
+    ]
+}</textarea>
+                    </div>
+
+                    <div id="manual-input-section" class="hidden" style="margin-bottom: 2rem;">
+                        <h3
+                            style="font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <span>📝</span> Enter Observations
+                        </h3>
+                        <p style="color: var(--text-3); font-size: 0.85rem; margin-bottom: 1.5rem;">Add multiple
+                            observations. Each observation represents a brightness measurement at a specific time.</p>
+
+                        <div style="margin-bottom: 2rem; max-width: 400px;">
+                            <label
+                                style="font-size: 0.75rem; color: var(--text-3); display: block; margin-bottom: 0.5rem;">Number
+                                of observations: 10 (Static Preloaded)</label>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
+                            <!-- Observation Details (Left) -->
+                            <div id="observation-details-col">
+                                <h4
+                                    style="font-size: 0.9rem; font-weight: 600; color: var(--text-1); margin-bottom: 1.5rem; text-transform: uppercase;">
+                                    Observation Details</h4>
+                                <div id="observations-container"
+                                    style="display: flex; flex-direction: column; gap: 1.5rem;">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+
+                            <!-- Preview Data (Right) -->
+                            <div id="preview-data-col">
+                                <h4
+                                    style="font-size: 0.9rem; font-weight: 600; color: var(--text-1); margin-bottom: 1.5rem; text-transform: uppercase;">
+                                    Preview Data</h4>
+                                <div
+                                    style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-subtle); border-radius: 8px; overflow: hidden;">
+                                    <table id="preview-table" class="cv-table" style="width: 100%; font-size: 0.8rem;">
+                                        <thead>
+                                            <tr>
+                                                <th style="padding: 0.5rem;">Time</th>
+                                                <th style="padding: 0.5rem;">Magnitude</th>
+                                                <th style="padding: 0.5rem;">Error</th>
+                                                <th style="padding: 0.5rem;">Band</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Populated by JS -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="csv-input-section" class="hidden" style="margin-bottom: 2rem;">
+                        <h3
+                            style="font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                            <span>📊</span> Upload CSV File
+                        </h3>
+                        <div
+                            style="padding: 2rem; border: 2px dashed var(--border-subtle); border-radius: 12px; text-align: center;">
+                            <p style="color: var(--text-3); margin-bottom: 1.5rem;">Upload a CSV with columns:
+                                object_id, time, magnitude, error, band.</p>
+                            <button class="btn-secondary"
+                                onclick="document.getElementById('batchCsvInput').click()">Choose CSV File</button>
+                            <input type="file" id="batchCsvInput" accept=".csv" style="display: none;">
+                            <div id="fileNameDisplay" style="margin-top: 1rem; color: var(--accent); font-weight: 600;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 2rem;">
+                        <button class="btn-preset" id="predictContrastiveBtn"
+                            style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-subtle); border-radius: 8px; color: white;">
+                            <span>🚀</span> Predict with Contrastive Model
+                        </button>
+                        <button class="btn-preset" id="predictAeBtn"
+                            style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-subtle); border-radius: 8px; color: white;">
+                            <span>🤖</span> Predict with Autoencoder Model
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Prediction Results: Side by Side -->
+                <div id="singleResults" class="hidden"
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <!-- Contrastive Column -->
+                    <div class="result-column">
+                        <div style="background: #38bdf8; height: 12px; border-radius: 6px; margin-bottom: 1.5rem;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2rem;">
+                            <span style="font-size: 1.4rem;">🎯</span>
+                            <h3 style="margin: 0; font-size: 1.4rem; color: #e2e8f0; font-weight: 700;">Prediction
+                                Result (Contrastive Model)</h3>
+                        </div>
+
+                        <div
+                            style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 2.5rem;">
+                            <div>
+                                <label
+                                    style="display: block; font-size: 0.7rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem;">Predicted
+                                    Class</label>
+                                <div id="contrastiveTopClass"
+                                    style="font-size: 2rem; font-weight: 400; color: #e2e8f0;">--</div>
+                            </div>
+                            <div>
+                                <label
+                                    style="display: block; font-size: 0.7rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem;">Confidence</label>
+                                <div id="contrastiveConf" style="font-size: 2rem; font-weight: 400; color: #e2e8f0;">
+                                    --%</div>
+                            </div>
+                            <div>
+                                <label
+                                    style="display: block; font-size: 0.7rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem;">Object
+                                    ID</label>
+                                <div id="contrastiveOid"
+                                    style="font-size: 1.6rem; font-weight: 400; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    --</div>
+                            </div>
+                        </div>
+
+                        <h4
+                            style="font-size: 1rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>📊</span> Probability Distribution
+                        </h4>
+                        <div style="height: 350px; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.5rem;">
+                            <canvas id="probsChartContrastive"></canvas>
+                        </div>
+
+                        <!-- Alerts -->
+                        <div id="contrastiveAlert" class="hidden"
+                            style="margin-top: 1.5rem; padding: 1.25rem; border-radius: 8px; display: flex; align-items: start; gap: 0.75rem;">
+                            <!-- Dynamic icon/message -->
+                        </div>
+                    </div>
+
+                    <!-- Autoencoder Column -->
+                    <div class="result-column">
+                        <div style="background: #38bdf8; height: 12px; border-radius: 6px; margin-bottom: 1.5rem;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2rem;">
+                            <span style="font-size: 1.4rem;">🎯</span>
+                            <h3 style="margin: 0; font-size: 1.4rem; color: #e2e8f0; font-weight: 700;">Prediction
+                                Result (Autoencoder Model)</h3>
+                        </div>
+
+                        <div
+                            style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 2.5rem;">
+                            <div>
+                                <label
+                                    style="display: block; font-size: 0.7rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem;">Predicted
+                                    Class</label>
+                                <div id="aeTopClass" style="font-size: 2rem; font-weight: 400; color: #e2e8f0;">--
+                                </div>
+                            </div>
+                            <div>
+                                <label
+                                    style="display: block; font-size: 0.7rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem;">Confidence</label>
+                                <div id="aeConf" style="font-size: 2rem; font-weight: 400; color: #e2e8f0;">--%</div>
+                            </div>
+                            <div>
+                                <label
+                                    style="display: block; font-size: 0.7rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem;">Object
+                                    ID</label>
+                                <div id="aeOid"
+                                    style="font-size: 1.6rem; font-weight: 400; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    --</div>
+                            </div>
+                        </div>
+
+                        <h4
+                            style="font-size: 1rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>📊</span> Probability Distribution
+                        </h4>
+                        <div style="height: 350px; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.5rem;">
+                            <canvas id="probsChartAe"></canvas>
+                        </div>
+
+                        <!-- Alerts -->
+                        <div id="aeAlert" class="hidden"
+                            style="margin-top: 1.5rem; padding: 1.25rem; border-radius: 8px; display: flex; align-items: start; gap: 0.75rem;">
+                            <!-- Dynamic icon/message -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Batch -->
+            <div id="tab-batch" class="tab-content">
+                <div class="card" style="padding: 2.5rem; margin-bottom: 2rem;">
+                    <h2
+                        style="font-size: 1.6rem; display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                        <span>📦</span> Batch CSV Prediction
+                    </h2>
+                    <hr style="border: none; border-top: 1px solid var(--border-subtle); margin-bottom: 2rem;">
+
+                    <div style="display: flex; gap: 1.5rem; align-items: center; margin-bottom: 2.5rem;">
+                        <button class="btn-secondary" onclick="document.getElementById('batchCsvInput').click()"
+                            style="padding: 0.75rem 1.5rem; border-radius: 8px;">
+                            📁 Upload Data Directory (CSV)
+                        </button>
+                        <input type="file" id="batchCsvInput" accept=".csv" style="display: none;">
+                        <span id="fileNameDisplay" style="color: var(--text-3); font-size: 0.9rem;">No file
+                            selected</span>
+                        <button class="btn-primary" id="runBatchBtn"
+                            style="padding: 0.75rem 2rem; border-radius: 8px;">Run Batch Analysis</button>
+                    </div>
+
+                    <div id="batchResults" class="hidden">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <h3 style="margin: 0; font-size: 1.2rem;">Batch Results Table</h3>
+                            <button class="btn-preset" onclick="exportBatchResults()" style="border-radius: 4px;">Export
+                                Results</button>
+                        </div>
+                        <div
+                            style="overflow-x: auto; background: rgba(0,0,0,0.1); border-radius: 12px; border: 1px solid var(--border-subtle);">
+                            <table class="cv-table" style="width: 100%;" id="batchTable">
+                                <thead>
+                                    <tr>
+                                        <th>Object ID</th>
+                                        <th>Predicted Class</th>
+                                        <th>Confidence</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Comparison -->
+            <div id="tab-compare" class="tab-content">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div class="card" style="padding: 2rem; border-top: 5px solid var(--accent-bright);">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <h3 style="margin: 0;">🚀 Contrastive Model</h3>
+                            <span class="badge-uat">Research</span>
+                        </div>
+                        <p style="font-size: 0.9rem; color: var(--text-2); margin-bottom: 1.5rem;"
+                            id="compContrastiveArch">--</p>
+                        <h4
+                            style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-3); margin-bottom: 0.75rem;">
+                            Advantages</h4>
+                        <ul style="padding: 0; list-style: none;" id="compContrastiveAdv">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+                    <div class="card" style="padding: 2rem; border-top: 5px solid var(--text-3);">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <h3 style="margin: 0;">🤖 Autoencoder</h3>
+                            <span class="badge-rnn">Baseline</span>
+                        </div>
+                        <p style="font-size: 0.9rem; color: var(--text-2); margin-bottom: 1.5rem;" id="compAeArch">--
+                        </p>
+                        <h4
+                            style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-3); margin-bottom: 0.75rem;">
+                            Limitations</h4>
+                        <ul style="padding: 0; list-style: none;" id="compAeDisadv">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+                </div>
+                <div class="card" style="padding: 2rem;">
+                    <h3 style="margin-bottom: 1rem;">Recommendation</h3>
+                    <p style="color: var(--text-2); font-size: 1rem; line-height: 1.6;" id="modelRec">
+                        The Supervised Contrastive Learning model is recommended for transient classification due to its
+                        explicit focus on learning discriminative features in a clustered embedding space.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Tab Content: Info -->
+            <div id="tab-info" class="tab-content">
+                <div class="card" style="padding: 2rem; margin-bottom: 2rem;">
+                    <h2
+                        style="font-size: 1.6rem; display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                        <span>ℹ️</span> Model Information
+                    </h2>
+                    <hr style="border: none; border-top: 1px solid var(--border-subtle); margin-bottom: 2rem;">
+
+                    <div class="model-info-tabs"
+                        style="display: flex; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem;">
+                        <button class="info-tab-btn active" data-model="contrastive"
+                            style="background: none; border: none; color: #38bdf8; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;">
+                            <span>🚀</span> Contrastive Model
+                        </button>
+                        <button class="info-tab-btn" data-model="autoencoder"
+                            style="background: none; border: none; color: var(--text-3); font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;">
+                            <span>🤖</span> Autoencoder Model
+                        </button>
+                    </div>
+
+                    <div id="infoJsonContainer"
+                        style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 1.5rem; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #facc15; overflow-x: auto; min-height: 300px;">
+                        <pre id="infoJsonDisplay" style="margin: 0;"></pre>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Extra Styles for Radio Nav -->
+    <style>
+        .tab-content {
+            display: none;
+            width: 100%;
+            transition: opacity 0.3s;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .nav-radio-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-radio-label input[type="radio"] {
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #94a3b8;
+            border-radius: 50%;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .nav-radio-label input[type="radio"]:checked {
+            border-color: #38bdf8;
+        }
+
+        .nav-radio-label input[type="radio"]:checked::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #38bdf8;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .nav-radio-label span {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .nav-radio-label input[type="radio"]:checked+span {
+            color: #e2e8f0;
+        }
+
+        .btn-preset,
+        .sample-pill {
+            font-size: 0.8rem;
+            padding: 0.4rem 0.8rem;
+            background: rgba(14, 165, 233, 0.1);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 20px;
+            color: #bae6fd;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .sample-pill:hover {
+            background: rgba(14, 165, 233, 0.25);
+            border-color: #38bdf8;
+            transform: translateY(-2px);
+        }
+
+        .cv-table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .cv-table th {
+            padding: 1rem;
+            text-align: left;
+            color: var(--text-3);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .cv-table td {
+            padding: 1rem;
+            color: var(--text-1);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 0.9rem;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .display-flex {
+            display: flex !important;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: #e2e8f0;
+        }
+
+        .alert-warning {
+            background: rgba(234, 179, 8, 0.1);
+            border: 1px solid rgba(234, 179, 8, 0.2);
+            color: #e2e8f0;
+        }
+    </style>
+
+    <script src="/static/transient.js"></script>
+    <script>
+        const navToggle = document.getElementById('navToggle');
+        const navLinks = document.querySelector('.nav-links');
+        if (navToggle) navToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('open');
+            navToggle.classList.toggle('open');
+        });
+    </script>
+</body>
+
+</html>
