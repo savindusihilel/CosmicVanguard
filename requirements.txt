@@ -8,3 +8,5 @@ nflows
 pydantic
 pandas
 scipy
+httpx
+python-multipart
