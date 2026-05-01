@@ -30,7 +30,7 @@ from utils.transient_utils import LightCurvePreprocessor, TARGET_CLASSES
 
 DEVICE = "cpu"
 INPUT_DIM = 10
-CONTEXT_DIM = 64
+CONTEXT_DIM = 128
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
@@ -69,35 +69,30 @@ async def lifespan(app: FastAPI):
     with open(os.path.join(GALAXY_ASSETS_DIR, "priors.json"), "r") as f:
         models["priors"] = json.load(f)
 
-    joint = PINNJoint(INPUT_DIM, context_dim=CONTEXT_DIM).to(DEVICE)
-
-    sd = torch.load(
-        os.path.join(GALAXY_ASSETS_DIR, "pinn_stageC_joint_final.pth"),
+    # ---- Galaxy: Decoupled PINN (Stage A) ----
+    joint = PINNJoint(INPUT_DIM).to(DEVICE)
+    sd_joint = torch.load(
+        os.path.join(GALAXY_ASSETS_DIR, "pinn_stageA_decoupled.pth"),
         map_location=DEVICE
     )
-
-    sd = {k: v for k, v in sd.items() if not k.startswith("flow.")}
-
-    joint.load_state_dict(sd, strict=False)
+    joint.load_state_dict(sd_joint, strict=False)
     joint.eval()
-
     models["joint"] = joint
 
+    # ---- Galaxy: Normalising Flow (sSFR labels, 4 blocks) ----
+    from utils.flow_utils import build_conditional_maf
     flow = build_conditional_maf(
-        context_dim=CONTEXT_DIM,
-        n_blocks=6,
+        context_dim=CONTEXT_DIM,     # 128
+        n_blocks=4,
         hidden_features=64
     ).to(DEVICE)
-
     flow.load_state_dict(
         torch.load(
-            os.path.join(GALAXY_ASSETS_DIR, "pinn_stageC_flow_final.pth"),
+            os.path.join(GALAXY_ASSETS_DIR, "flow_v2_best.pth"),
             map_location=DEVICE
         )
     )
-
     flow.eval()
-
     models["flow"] = flow
 
     rf_m = os.path.join(GALAXY_ASSETS_DIR, "rf_mass.joblib")
