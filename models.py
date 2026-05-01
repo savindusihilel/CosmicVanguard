@@ -2,52 +2,41 @@ import torch
 import torch.nn as nn
 import math
 
-# ----------------------
-# Joint PINN model (Stage C)
-# ----------------------
 class PINNJoint(nn.Module):
-    def __init__(self, dim, context_dim=64):
+    def __init__(self, in_dim, context_dim=128):
         super().__init__()
-
-        self.shared = nn.Sequential(
-            nn.Linear(dim,256), nn.ReLU(),
-            nn.Linear(256,128), nn.ReLU()
-        )
-
-        self.m_head = nn.Sequential(nn.Linear(128,1), nn.Tanh())
-        self.s_head = nn.Sequential(nn.Linear(128,1), nn.Tanh())
-
-        self.m_logvar = nn.Linear(128,1)
-        self.s_logvar = nn.Linear(128,1)
-
-        self.context_net = nn.Sequential(
-            nn.Linear(128,context_dim), nn.ReLU(),
-            nn.Linear(context_dim,context_dim), nn.ReLU()
-        )
-
-        # Physical bounds (MUST match training)
         self.M_CENTER = 9.0
         self.M_SCALE  = 4.0
         self.S_CENTER = -1.5
         self.S_SCALE  = 3.5
+        self.SIGMA_MIN = 0.01
+        self.SIGMA_MAX = 2.00
+
+        self.encoder = nn.Sequential(
+            nn.Linear(in_dim, 256), nn.ReLU(),
+            nn.Linear(256, 128), nn.ReLU(),
+        )
+        self.m_head = nn.Linear(128, 2)   # z_M, log_var_M
+        self.s_head = nn.Linear(128, 2)   # z_S, log_var_S
+
+    def _bounded_mean_and_logvar(self, head_out, center, scale):
+        mu = center + scale * torch.tanh(head_out[:, 0])
+        log_var = head_out[:, 1].clamp(
+            2 * math.log(self.SIGMA_MIN),
+            2 * math.log(self.SIGMA_MAX)
+        )
+        return mu, log_var
 
     def forward(self, x):
-        h = self.shared(x)
-
-        m_mu = self.M_CENTER + self.M_SCALE * self.m_head(h).squeeze(-1)
-        s_mu = self.S_CENTER + self.S_SCALE * self.s_head(h).squeeze(-1)
-
-        m_logvar = self.m_logvar(h).squeeze(-1)
-        s_logvar = self.s_logvar(h).squeeze(-1)
-
-        ctx = self.context_net(h)
-
+        h = self.encoder(x)
+        mu_M, lv_M = self._bounded_mean_and_logvar(self.m_head(h), self.M_CENTER, self.M_SCALE)
+        mu_S, lv_S = self._bounded_mean_and_logvar(self.s_head(h), self.S_CENTER, self.S_SCALE)
         return {
-            "context": ctx,
-            "mu_mass": m_mu,
-            "logvar_mass": m_logvar,
-            "mu_sfr": s_mu,
-            "logvar_sfr": s_logvar
+            "context": h,                # 128‑dim, directly usable by the new flow
+            "mu_mass": mu_M,
+            "logvar_mass": lv_M,
+            "mu_sfr": mu_S,
+            "logvar_sfr": lv_S,
         }
 
 # ----------------------
