@@ -97,12 +97,12 @@ body::after {
     max-width: 1320px;
     margin: 0 auto;
     width: 100%;
-    padding: 6.5rem 2rem 4rem;
+    padding: 5rem 2rem 4rem;
 }
 
 /* ═══ Header ═══ */
 header {
-    margin-bottom: 2.5rem;
+    margin-bottom: 3rem;
     text-align: center;
 }
 
