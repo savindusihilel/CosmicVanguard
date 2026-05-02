@@ -639,31 +639,97 @@ async def predict_starcharacterizer(data: GalaxyInput):
         gmm_fracs = (gmm_fracs * 100).tolist()
 
         # Step 10 — MLP population head
-        pop_model   = tf.keras.models.load_model(os.path.join(d, "population_model_final.keras"))
+        # Stub for EntropyRegularisation so Keras can deserialize without original training code.
+        class EntropyRegularisation(tf.keras.layers.Layer):
+            def __init__(self, weight=0.15, **kwargs):
+                super().__init__(**kwargs)
+                self.weight = weight
+            def call(self, inputs, training=None):
+                return inputs
+            def get_config(self):
+                cfg = super().get_config()
+                cfg.update({"weight": self.weight})
+                return cfg
+
+        pop_model = tf.keras.models.load_model(
+            os.path.join(d, "population_model_final.keras"),
+            custom_objects={"EntropyRegularisation": EntropyRegularisation},
+            safe_mode=False
+        )
         mlp_raw     = pop_model.predict(z_clean, verbose=0)[0]
         mlp_raw     = np.clip(mlp_raw, 0, None)
         if mlp_raw.sum() > 0:
             mlp_raw = mlp_raw / mlp_raw.sum()
         mlp_fracs   = (mlp_raw * 100).tolist()
 
-        # Step 11 — metrics (derived from MLP output only)
-        labels       = ["Young stars", "Intermediate stars", "Old stars"]
-        p            = np.array(mlp_fracs) / 100.0
-        entropy      = float(-np.sum(p * np.log(p + 1e-9)))
+        # Step 11 — core metrics
+        labels        = ["Young stars", "Intermediate stars", "Old stars"]
+        p             = np.array(mlp_fracs) / 100.0
+        entropy       = float(-np.sum(p * np.log(p + 1e-9)))
         certainty_pct = float((1.0 - entropy / np.log(3)) * 100.0)
-        dominant_idx = int(np.argmax(p))
-        dominant     = labels[dominant_idx]
-        gmm_p        = np.array(gmm_fracs) / 100.0
+        dominant_idx  = int(np.argmax(p))
+        dominant      = labels[dominant_idx]
+        gmm_p         = np.array(gmm_fracs) / 100.0
         agreement_pct = float((1.0 - np.mean(np.abs(gmm_p - p))) * 100.0)
 
+        # Step 12 — feature importance via perturbation of dominant fraction
+        def _run_mlp(ps, rc):
+            zr = pca_latent.transform(ps)
+            op = ols.predict(rc)
+            if op.ndim == 1:
+                op = op.reshape(1, -1)
+            if op.shape[1] != zr.shape[1]:
+                md = min(op.shape[1], zr.shape[1])
+                zc = zr[:, :md] - alpha * op[:, :md]
+            else:
+                zc = zr - alpha * op
+            mr = pop_model.predict(zc, verbose=0)[0]
+            mr = np.clip(mr, 0, None)
+            if mr.sum() > 0:
+                mr = mr / mr.sum()
+            return float(mr[dominant_idx])
+
+        nom_frac = _run_mlp(phot_slice, redshift_col)
+        fi_vals = []
+        for col_idx in [5, 6, 7]:   # u_g, r_i, i_z indices in phot_slice
+            ps_p = phot_slice.copy()
+            ps_p[:, col_idx] = 0.0
+            fi_vals.append(abs(nom_frac - _run_mlp(ps_p, redshift_col)))
+        fi_vals.append(abs(nom_frac - _run_mlp(phot_slice, np.zeros_like(redshift_col))))
+        fi_arr = np.array(fi_vals, dtype=np.float64)
+        if fi_arr.sum() > 0:
+            fi_arr = fi_arr / fi_arr.sum()
+        fi_pct = (fi_arr * 100.0).tolist()
+
+        # Step 13 — population confidence (normalised)
+        pop_conf_raw = [float(p[i] / (entropy + 1.0)) for i in range(3)]
+        pc_max = max(pop_conf_raw) if max(pop_conf_raw) > 0 else 1.0
+        pop_conf = [round(v / pc_max * 100.0, 2) for v in pop_conf_raw]
+
         return {
-            "labels":        labels,
-            "gmm_fractions": [round(float(v), 4) for v in gmm_fracs],
-            "mlp_fractions": [round(float(v), 4) for v in mlp_fracs],
-            "dominant":      dominant,
-            "entropy":       round(entropy, 6),
-            "certainty_pct": round(certainty_pct, 4),
-            "agreement_pct": round(agreement_pct, 4),
+            "labels":          labels,
+            "gmm_fractions":   [round(float(v), 4) for v in gmm_fracs],
+            "mlp_fractions":   [round(float(v), 4) for v in mlp_fracs],
+            "dominant":        dominant,
+            "entropy":         round(entropy, 6),
+            "certainty_pct":   round(certainty_pct, 4),
+            "agreement_pct":   round(agreement_pct, 4),
+            # Fixed research constants (11 799-galaxy SDSS test set)
+            "model_r2":        0.9712,
+            "model_mae":       0.0315,
+            "pearson_r":       0.0161,
+            "hsic":            0.001074,
+            "ks_stat":         0.1297,
+            "reconstruction_r2": 0.9417,
+            "alpha_used":      round(float(alpha), 4),
+            # Per-input dynamic outputs
+            "feature_importance": {
+                "u_g":             round(fi_pct[0], 2),
+                "r_i":             round(fi_pct[1], 2),
+                "i_z":             round(fi_pct[2], 2),
+                "redshift_weight": round(fi_pct[3], 2)
+            },
+            "population_confidence": pop_conf,
             "derived": {
                 "u_g": round(float(u_g), 4),
                 "r_i": round(float(r_i), 4),
@@ -676,6 +742,69 @@ async def predict_starcharacterizer(data: GalaxyInput):
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=str(e))
 # STARCHARACTERIZER END
+
+# STARCHARACTERIZER START (baseline)
+@app.post("/api/starcharacterizer/baseline")
+async def baseline_starcharacterizer(data: GalaxyInput):
+    try:
+        import tensorflow as tf
+        import joblib as _jl
+        import numpy as np
+        from fastapi import HTTPException
+
+        d = STARCHARACTERIZER_ASSETS_DIR
+
+        u_g = data.u - data.g
+        r_i = data.r - data.i
+        i_z = data.i - data.z
+
+        x = np.array([[data.u, data.g, data.r, data.i, data.z,
+                        data.redshift, u_g, r_i, i_z]], dtype=np.float32)
+
+        scaler = _jl.load(os.path.join(d, "scaler_cosmo.pkl"))
+        x_scaled = scaler.transform(x)
+        phot_slice = x_scaled[:, [0, 1, 2, 3, 4, 6, 7, 8]]
+
+        # Encode with baseline encoder
+        basic_encoder = tf.keras.models.load_model(
+            os.path.join(d, "basic_encoder.keras"), safe_mode=False
+        )
+        z_enc = basic_encoder.predict(phot_slice, verbose=0)
+
+        # GMM with temperature softening T=4.5
+        basic_gmm = _jl.load(os.path.join(d, "basic_gmm.pkl"))
+        gmm_proba  = basic_gmm.predict_proba(z_enc)
+        T = 4.5
+        gmm_proba = np.clip(gmm_proba, 1e-9, None)
+        gmm_proba = gmm_proba ** (1.0 / T)
+        gmm_proba = gmm_proba / gmm_proba.sum(axis=1, keepdims=True)
+
+        gmm_fracs = gmm_proba[0, :3]
+        if gmm_fracs.sum() > 0:
+            gmm_fracs = gmm_fracs / gmm_fracs.sum()
+        gmm_fracs = (gmm_fracs * 100.0).tolist()
+
+        labels      = ["Young stars", "Intermediate stars", "Old stars"]
+        p           = np.array(gmm_fracs) / 100.0
+        entropy     = float(-np.sum(p * np.log(p + 1e-9)))
+        certainty_pct = float((1.0 - entropy / np.log(3)) * 100.0)
+        dominant    = labels[int(np.argmax(p))]
+
+        return {
+            "labels":        labels,
+            "gmm_fractions": [round(float(v), 4) for v in gmm_fracs],
+            "dominant":      dominant,
+            "entropy":       round(entropy, 6),
+            "certainty_pct": round(certainty_pct, 4),
+            "baseline_r2":   -0.4954,
+            "baseline_mae":  0.2412
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))
+# STARCHARACTERIZER END (baseline)
 
 # ======================
 # STARFORGE ENDPOINTS
