@@ -21,6 +21,7 @@ document.getElementById('predictForm').addEventListener('input', (e) => {
     if (e.target.tagName === 'INPUT') {
         window.trueMass = undefined;
         window.trueSfr = undefined;
+        window.sdssTarget = null;
         document.querySelectorAll('.sdss-galaxy-card').forEach(c => c.classList.remove('selected'));
     }
 });
@@ -97,6 +98,31 @@ function generateInterpretation(r) {
 function displayResults(r) {
     document.getElementById('emptyState').classList.add('hidden');
     document.getElementById('resultsContent').classList.remove('hidden');
+
+    // ── Target Profile ──
+    const targetProfile = document.getElementById('targetProfile');
+    const targetImage = document.getElementById('targetImage');
+    const targetFallback = document.getElementById('targetFallback');
+
+    if (window.sdssTarget) {
+        targetProfile.classList.remove('hidden');
+        const ra = window.sdssTarget.ra;
+        const dec = window.sdssTarget.dec;
+        targetImage.src = `https://skyserver.sdss.org/dr18/SkyserverWS/ImgCutout/getjpeg?ra=${ra}&dec=${dec}&width=400&height=400&scale=0.2`;
+        targetImage.classList.remove('hidden');
+        targetFallback.classList.add('hidden');
+        
+        document.getElementById('targetObjId').textContent = window.sdssTarget.objID || '—';
+        document.getElementById('targetZ').textContent = window.sdssTarget.z ? window.sdssTarget.z.toFixed(4) : '—';
+        document.getElementById('targetSource').textContent = window.sdssSource || 'SDSS DR18';
+    } else {
+        targetProfile.classList.remove('hidden');
+        targetImage.classList.add('hidden');
+        targetFallback.classList.remove('hidden');
+        document.getElementById('targetObjId').textContent = 'Manual Input';
+        document.getElementById('targetZ').textContent = document.getElementById('redshift').value || '—';
+        document.getElementById('targetSource').textContent = 'User Defined';
+    }
 
     // ── KPI Metrics ──
     animateValue('massVal', r.mass_log_mean, 2);
@@ -730,8 +756,13 @@ document.querySelectorAll('.sdss-tab').forEach(btn => {
 // ── SDSS loading / error helpers ──
 function sdssSetLoading(show) {
     const el = document.getElementById('sdssLoading');
-    if (show) el.classList.remove('hidden');
-    else el.classList.add('hidden');
+    if (show) {
+        el.classList.remove('hidden');
+        const wrap = document.getElementById('sdssResultsWrap');
+        if (wrap) wrap.style.display = 'none';
+    } else {
+        el.classList.add('hidden');
+    }
     document.querySelectorAll('.sdss-btn').forEach(b => b.disabled = show);
 }
 
@@ -799,6 +830,7 @@ function sdssSelectGalaxy(g) {
     window.trueMass = g.true_mass;
     window.trueSfr = g.true_sfr;
     window.sdssSource = g.source || 'SDSS DR18';
+    window.sdssTarget = { ra: g.ra, dec: g.dec, objID: g.objID, z: g.redshift };
 
     // Highlight selected card
     document.querySelectorAll('.sdss-galaxy-card').forEach(c => c.classList.remove('selected'));
