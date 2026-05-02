@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StarCharacterizer — Cosmic Vanguard</title>
+    <meta name="description"
+        content="Decompose galaxies into young, intermediate, and old stellar population fractions using a disentangled Split-VAE with redshift-invariant latent encoding.">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/starcharacterizer_style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="cv-nav scrolled" id="mainNav">
+        <div class="nav-inner">
+            <a href="/" class="nav-brand">
+                <span class="brand-icon">◆</span>
+                Cosmic<span class="brand-accent">Vanguard</span>
+            </a>
+            <div class="nav-links">
+                <a href="/galaxy" class="nav-link">GalaxyPlayground</a>
+                <a href="/quasar" class="nav-link">QuasarWatch</a>
+                <a href="/starforge" class="nav-link">StarForge</a>
+                <a href="/starcharacterizer" class="nav-link active">StarCharacterizer</a>
+                <a href="/transient" class="nav-link">TransientHunter</a>
+                <a href="/contact" class="nav-link nav-link-cta">Apply for Grant</a>
+            </div>
+            <button class="nav-toggle" id="navToggle" aria-label="Menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="app-container">
+        <header>
+            <div class="logo">Star<span>Characterizer</span></div>
+            <p class="subtitle">Split-VAE Stellar Population Synthesis · Disentangled Latent Space</p>
+        </header>
+
+        <main class="grid-layout">
+            <!-- ═══════════════ INPUT PANEL ═══════════════ -->
+            <section class="panel input-panel" id="inputPanel">
+                <div class="panel-header">
+                    <h2>Configuration</h2>
+                </div>
+
+                <form id="scForm">
+                    <!-- Photometry -->
+                    <div class="input-group">
+                        <label>Photometry <span class="label-hint">(Magnitudes)</span></label>
+                        <div class="grid-2">
+                            <div class="field">
+                                <label for="sc_u">u-band</label>
+                                <input type="number" id="sc_u" step="any" placeholder="20.74" required>
+                            </div>
+                            <div class="field">
+                                <label for="sc_g">g-band</label>
+                                <input type="number" id="sc_g" step="any" placeholder="19.52" required>
+                            </div>
+                            <div class="field">
+                                <label for="sc_r">r-band</label>
+                                <input type="number" id="sc_r" step="any" placeholder="18.84" required>
+                            </div>
+                            <div class="field">
+                                <label for="sc_i">i-band</label>
+                                <input type="number" id="sc_i" step="any" placeholder="18.43" required>
+                            </div>
+                            <div class="field field-full">
+                                <label for="sc_z">z-band</label>
+                                <input type="number" id="sc_z" step="any" placeholder="18.16" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cosmological Parameters -->
+                    <div class="input-group">
+                        <label>Cosmological Parameters</label>
+                        <div class="field">
+                            <label for="sc_redshift">Redshift (z)</label>
+                            <input type="number" id="sc_redshift" step="any" placeholder="0.0394" required>
+                        </div>
+                    </div>
+
+                    <!-- Example Galaxies -->
+                    <div class="input-group">
+                        <label>Example Galaxies</label>
+                        <div class="preset-buttons">
+                            <button type="button" class="btn-preset" id="preset-starburst">
+                                <span class="preset-dot dot-starburst"></span>Starburst
+                            </button>
+                            <button type="button" class="btn-preset" id="preset-elliptical">
+                                <span class="preset-dot dot-elliptical"></span>Elliptical
+                            </button>
+                            <button type="button" class="btn-preset" id="preset-greenvalley">
+                                <span class="preset-dot dot-greenvalley"></span>Green Valley
+                            </button>
+                            <button type="button" class="btn-preset" id="preset-disk">
+                                <span class="preset-dot dot-disk"></span>Disk
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Derived Features -->
+                    <div class="sc-derived-block">
+                        <div class="sc-derived-row">
+                            <div class="sc-chip">
+                                <span class="sc-chip-label">u−g</span>
+                                <span class="sc-chip-value" id="chip_ug">0.00</span>
+                            </div>
+                            <div class="sc-chip">
+                                <span class="sc-chip-label">r−i</span>
+                                <span class="sc-chip-value" id="chip_ri">0.00</span>
+                            </div>
+                            <div class="sc-chip">
+                                <span class="sc-chip-label">i−z</span>
+                                <span class="sc-chip-value" id="chip_iz">0.00</span>
+                            </div>
+                        </div>
+                        <p class="sc-derived-hint">Derived automatically — consistent with Split-VAE training preprocessing.</p>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="scRunBtn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        Characterize Stellar Populations
+                    </button>
+                </form>
+            </section>
+
+            <!-- ═══════════════ RESULTS PANEL ═══════════════ -->
+            <section class="panel result-panel" id="resultPanel">
+                <!-- Loading Overlay -->
+                <div class="loading-overlay hidden" id="loading">
+                    <div class="spinner-wrap">
+                        <div class="spinner"></div>
+                        <span class="spinner-text">Running Split-VAE inference…</span>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-icon">
+                        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            <line x1="12" y1="12" x2="12" y2="22"></line>
+                            <line x1="4.93" y1="4.93" x2="9" y2="9"></line>
+                            <line x1="19.07" y1="4.93" x2="15" y2="9"></line>
+                        </svg>
+                    </div>
+                    <h3>No Analysis Yet</h3>
+                    <p>Enter photometric values and click Characterize<br>to decompose stellar populations.</p>
+                </div>
+
+                <!-- Results Content -->
+                <div class="results-content hidden" id="resultsContent">
+
+                    <!-- Population Fraction Bars -->
+                    <div class="sc-fraction-section">
+                        <div class="sc-model-group">
+                            <div class="sc-model-group-title">
+                                <span class="dot-gmm"></span>GMM Soft Assignments
+                            </div>
+                            <div id="gmmBars"></div>
+                        </div>
+                        <div class="sc-model-group">
+                            <div class="sc-model-group-title">
+                                <span class="dot-mlp"></span>MLP / Split-VAE Head
+                            </div>
+                            <div id="mlpBars"></div>
+                        </div>
+                    </div>
+
+                    <!-- Charts -->
+                    <div class="sc-charts-row">
+                        <div class="sc-chart-wrap">
+                            <div class="sc-chart-title">GMM vs MLP Comparison</div>
+                            <div style="height:220px;">
+                                <canvas id="comparisonChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="sc-chart-wrap">
+                            <div class="sc-chart-title">Population Radar</div>
+                            <div style="height:220px;">
+                                <canvas id="radarChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dominant Population Card -->
+                    <div class="sc-dominant-card" id="dominantCard">
+                        <div class="sc-dominant-header">
+                            <div>
+                                <div class="sc-dominant-label">Dominant Population</div>
+                                <div class="sc-dominant-value">
+                                    <span id="sc-dominant-name">—</span>
+                                    <span class="sc-dominant-pct" id="sc-dominant-pct">—</span>
+                                </div>
+                            </div>
+                            <span class="sc-transitional-badge hidden" id="sc-transitional-badge">
+                                Transitional Galaxy
+                            </span>
+                        </div>
+                        <p class="sc-interpretation" id="sc-dominant-interp">—</p>
+                    </div>
+
+                    <!-- Shannon Entropy / Certainty Bar -->
+                    <div class="sc-entropy-section">
+                        <div class="sc-entropy-label-row">
+                            <span class="sc-entropy-title">Population Certainty</span>
+                            <div class="sc-entropy-readouts">
+                                <span class="sc-entropy-raw" id="sc-entropy-val">H = —</span>
+                                <span class="sc-certainty-raw" id="sc-certainty-val">— certain</span>
+                            </div>
+                        </div>
+                        <div class="sc-entropy-bar-wrap">
+                            <div class="sc-entropy-fill" id="sc-entropy-fill" style="width:0%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Row -->
+                    <div class="sc-metrics-row">
+                        <div class="sc-metric-chip">
+                            <span class="sc-metric-chip-label">GMM–MLP Agreement</span>
+                            <span class="sc-metric-chip-value" id="sc-agreement-val">—</span>
+                        </div>
+                        <div class="sc-metric-chip">
+                            <span class="sc-metric-chip-label">Certainty Score</span>
+                            <span class="sc-metric-chip-value" id="sc-certainty-chip">—</span>
+                        </div>
+                    </div>
+
+                </div><!-- /results-content -->
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/starcharacterizer.js"></script>
+    <script>
+        // Mobile nav toggle
+        const navToggle = document.getElementById('navToggle');
+        const navLinks  = document.querySelector('.nav-links');
+        if (navToggle) navToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('open');
+            navToggle.classList.toggle('open');
+        });
+    </script>
+</body>
+
+</html>
