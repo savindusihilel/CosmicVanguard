@@ -2,6 +2,20 @@ const TARGET_CLASSES = [
     'AGN', 'Blazar', 'CV/Nova', 'QSO', 'SN II',
     'SN Ia', 'SN Ibc', 'YSO', 'LPV', 'Periodic'
 ];
+
+const CLASS_DESCRIPTIONS = {
+    'AGN': 'Active Galactic Nucleus (AGN) transients are powered by the accretion of matter onto a supermassive black hole at the center of a galaxy. They exhibit irregular, non-periodic variability across all wavelengths, often lasting from days to years.',
+    'Blazar': 'A Blazar is a highly variable AGN with a relativistic jet pointed directly toward Earth. They show extreme, rapid brightness changes and strong polarization, making their light curves highly chaotic.',
+    'CV/Nova': 'Cataclysmic Variables (CVs) and Novae involve a white dwarf accreting matter from a companion star. This leads to sudden, dramatic outbursts or thermonuclear explosions, creating sharp peaks in their light curves.',
+    'QSO': 'Quasi-Stellar Objects (QSOs or Quasars) are extremely luminous AGNs. Their variability is similar to standard AGNs but often observed over longer timescales due to time dilation at high redshifts.',
+    'SN II': 'Type II Supernovae are the core-collapse explosions of massive stars. Their light curves typically show a rapid rise to peak brightness followed by a plateau phase lasting weeks or months before a slow decline.',
+    'SN Ia': 'Type Ia Supernovae occur when a white dwarf in a binary system exceeds the Chandrasekhar limit and undergoes runaway carbon fusion. They serve as standard candles due to their remarkably consistent, predictable light curve shapes.',
+    'SN Ibc': 'Type Ib/c Supernovae are core-collapse supernovae from massive stars that have lost their outer hydrogen (and sometimes helium) envelopes. Their light curves are narrower and faster-evolving than Type IIs.',
+    'YSO': 'Young Stellar Objects (YSOs) are stars in the early stages of formation. Their light curves are highly erratic due to variable accretion, magnetic flaring, and obscuring dust clouds in their surrounding protoplanetary disks.',
+    'LPV': 'Long-Period Variables (LPVs) are pulsating red giant stars, such as Miras. They show large-amplitude, periodic or semi-periodic brightness variations occurring over timescales of hundreds of days.',
+    'Periodic': 'This class encompasses various periodically variable stars, such as Cepheids or RR Lyrae. Their light curves display strict, repeating patterns driven by internal pulsations or binary eclipses.'
+};
+
 let currentLightCurve = null;
 let probsChartContrastive = null;
 let probsChartAe = null;
@@ -289,6 +303,15 @@ function updateResultColumn(prefix, data) {
     document.getElementById(`${prefix}TopClass`).textContent = predictedClass;
     document.getElementById(`${prefix}Conf`).textContent = `${(targetConf * 100).toFixed(2)}%`;
     document.getElementById(`${prefix}Oid`).textContent = data.object_id || 'N/A';
+
+    if (prefix === 'contrastive') {
+        const descContainer = document.getElementById('contrastiveDescContainer');
+        const descText = document.getElementById('contrastiveDescText');
+        if (descContainer && descText) {
+            descText.textContent = CLASS_DESCRIPTIONS[predictedClass] || 'No specific description available for this transient class.';
+            descContainer.classList.remove('hidden');
+        }
+    }
 
     // Alerts logic
     const alertEl = document.getElementById(`${prefix}Alert`);

@@ -274,6 +274,12 @@
                                 style="margin-top: 1.5rem; padding: 1.25rem; border-radius: 8px; display: flex; align-items: start; gap: 0.75rem;">
                                 <!-- Dynamic icon/message -->
                             </div>
+
+                            <!-- Description -->
+                            <div id="contrastiveDescContainer" class="hidden" style="margin-top: 1.5rem; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); padding: 1.25rem; border-radius: 8px;">
+                                <h4 style="color: #38bdf8; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;"><span>ℹ️</span> Transient Description</h4>
+                                <p id="contrastiveDescText" style="color: #e2e8f0; font-size: 0.85rem; line-height: 1.5; margin: 0;"></p>
+                            </div>
                         </div>
 
                         <!-- Autoencoder Column -->
@@ -341,12 +347,28 @@
                                 style="background: rgba(139, 92, 246, 0.1); padding: 0.5rem 1.5rem; border-radius: 20px; font-size: 0.85rem; border: 1px solid rgba(139, 92, 246, 0.3); color: #c4b5fd; font-weight: 500;"
                                 id="visualOidLabel">Object ID: --</span>
                         </div>
-                        <p style="color: var(--text-2); font-size: 0.95rem; margin-bottom: 2rem; line-height: 1.6;">
-                            This plot visualizes the light curve sequence of the transient object. The
-                            <strong>Y-axis is inverted</strong> so that apparent brightness increases upwards,
-                            following astronomical conventions. Different colors represent distinct filter bands.
-                            Hovering over data points reveals precise magnitude values.
-                        </p>
+                        <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 2rem; margin-bottom: 2rem; align-items: stretch;">
+                            <div>
+                                <p style="color: var(--text-2); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">
+                                    This interactive visualization represents the <strong>photometric light curve</strong> of the observed transient event. Light curves are the primary data structures used by our deep learning models to classify these astronomical phenomena. Understanding how to read this chart is crucial for interpreting the model's confidence and predictive behavior.
+                                </p>
+                                <ul style="color: var(--text-2); font-size: 0.9rem; line-height: 1.6; padding-left: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                                    <li><strong>Inverted Magnitude Axis (Y-Axis):</strong> Following standard astronomical conventions, the y-axis is inverted. A smaller magnitude value indicates a <em>brighter</em> object. Therefore, peaks in the graph correspond to the brightest points in the transient's outburst.</li>
+                                    <li><strong>Temporal Evolution (X-Axis):</strong> The x-axis tracks time in Modified Julian Days (MJD). The temporal spacing between observations (cadence) is often irregular, which is why our models utilize recurrent layers (like LSTM or GRU) to handle unevenly sampled sequence data.</li>
+                                    <li><strong>Multiband Photometry (Colors):</strong> Different colors represent distinct optical filter bands (e.g., <span style="color: #10b981;">g-band</span>, <span style="color: #ef4444;">r-band</span>). Transients often have unique color evolutions (temperature changes) over time, serving as critical classification features.</li>
+                                    <li><strong>Interactive Tooltips:</strong> Hovering over any individual data point will reveal the exact MJD, apparent magnitude, and the associated photometric error for that specific observation.</li>
+                                </ul>
+                            </div>
+                            <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border-subtle); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; height: 100%;">
+                                <img src="/assets/time_series_extraction.png" alt="Time Series Feature Extraction Diagram" style="width: 100%; height: 160px; border-bottom: 1px solid var(--border-subtle); object-fit: cover;">
+                                <div style="padding: 1.25rem; flex-grow: 1;">
+                                    <h5 style="color: #38bdf8; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;"><span>🧠</span> Representation Learning</h5>
+                                    <p style="color: var(--text-3); font-size: 0.8rem; margin: 0; line-height: 1.6;">
+                                        The <strong>Contrastive model</strong> projects these sparse, irregular light curve sequences into a dense, high-dimensional latent space. By analyzing the trajectory of brightness and color changes, the network learns to confidently distinguish between physically distinct transient classes.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                         <div
                             style="background: rgba(0,0,0,0.3); border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border-subtle);">
                             <div style="height: 400px;">
@@ -521,7 +543,7 @@
         }
     </style>
 
-    <script src="/static/transient.js?v=4"></script>
+    <script src="/static/transient.js?v=5"></script>
     <script>
         const navToggle = document.getElementById('navToggle');
         const navLinks = document.querySelector('.nav-links');
