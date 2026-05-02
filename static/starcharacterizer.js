@@ -131,6 +131,17 @@ function displayResults(r, baseline, inputs) {
     document.getElementById('resultsContent').classList.remove('hidden');
 
     // Tab 1 — Interpretation
+    // Update chips with backend-computed absolute colour indices
+    if (r.derived) {
+        document.getElementById('chip_ug').textContent = r.derived.u_g.toFixed(2);
+        document.getElementById('chip_ri').textContent = r.derived.r_i.toFixed(2);
+        document.getElementById('chip_iz').textContent = r.derived.i_z.toFixed(2);
+        // Update chip labels to reflect absolute values
+        const chipLabels = document.querySelectorAll('.sc-chip-label');
+        if (chipLabels[0]) chipLabels[0].textContent = 'U−G (abs)';
+        if (chipLabels[1]) chipLabels[1].textContent = 'R−I (abs)';
+        if (chipLabels[2]) chipLabels[2].textContent = 'I−Z (abs)';
+    }
     renderDominantCard(r);
     renderPopBars('gmmBars', r.labels, r.gmm_fractions);
     renderPopBars('mlpBars', r.labels, r.mlp_fractions);
