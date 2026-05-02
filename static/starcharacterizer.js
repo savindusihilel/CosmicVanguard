@@ -183,9 +183,9 @@ function renderPopBars(containerId, labels, values) {
 function renderDominantCard(r) {
     const icons = { 'Young stars': '🔵', 'Intermediate stars': '🟢', 'Old stars': '🔴' };
     const interps = {
-        'Young stars':        'Actively star-forming galaxy with significant recent star formation activity.',
-        'Intermediate stars': 'Mixed-age stellar population suggesting a transitional evolutionary phase.',
-        'Old stars':          'Passively evolving galaxy dominated by old, metal-rich stellar populations.'
+        'Young stars':        'The dominant stellar population is classified as young, indicating photometric colours consistent with recently formed, high-mass stars.',
+        'Intermediate stars': 'The dominant stellar population is classified as intermediate-age, with photometric colours spanning the transition between young and old stellar populations.',
+        'Old stars':          'The dominant stellar population is classified as old, characterised by photometric colours consistent with low-mass, long-lived stellar populations.'
     };
     const pct = Math.max(...r.mlp_fractions);
     document.getElementById('sc-dominant-icon').textContent   = icons[r.dominant] || '⭐';
@@ -207,16 +207,19 @@ function renderEntropyBar(r) {
 
 function renderPlainSummary(r) {
     const dom = r.dominant.toLowerCase();
+    const y = r.mlp_fractions[0].toFixed(1);
+    const m = r.mlp_fractions[1].toFixed(1);
+    const o = r.mlp_fractions[2].toFixed(1);
     let text = '';
     if (dom.includes('young')) {
-        text = `This galaxy is actively forming new stars, with ${r.mlp_fractions[0].toFixed(1)}% of its stellar population classified as young. Its photometric colours indicate recent or ongoing star formation activity.`;
-    } else if (dom.includes('intermediate')) {
-        text = `This galaxy shows a mixed stellar population with ${r.mlp_fractions[1].toFixed(1)}% intermediate-age stars. It may be transitioning from active star formation toward quiescence — a Green Valley galaxy.`;
+        text = `The Split-VAE model classifies this galaxy as dominated by young stellar populations (${y}%), with intermediate-age populations at ${m}% and old populations at ${o}%. The photometric colour indices, corrected for cosmological redshift bias, are consistent with a young-dominant population fraction.`;
+    } else if (dom.includes('inter')) {
+        text = `The Split-VAE model classifies this galaxy as dominated by intermediate-age stellar populations (${m}%), with young populations at ${y}% and old populations at ${o}%. The colour-magnitude position suggests a mixed-age population distribution in the transitional regime.`;
     } else {
-        text = `This galaxy is dominated by old stellar populations (${r.mlp_fractions[2].toFixed(1)}%), consistent with a passively evolving elliptical or lenticular system with little recent star formation.`;
+        text = `The Split-VAE model classifies this galaxy as dominated by old stellar populations (${o}%), with intermediate-age populations at ${m}% and young populations at ${y}%. The photometric colour indices are consistent with an old-dominant population fraction.`;
     }
-    if (r.entropy > 1.0) text += ' The high prediction entropy suggests this galaxy occupies a transitional evolutionary state.';
-    text += ` Cosmological redshift bias has been removed using an OLS projection with α = ${r.alpha_used}.`;
+    if (r.entropy > 1.0) text += ' The elevated Shannon entropy (H = ' + r.entropy.toFixed(3) + ' nats) indicates significant uncertainty across population classes.';
+    text += ` Redshift nuisance projection applied with α = ${r.alpha_used}.`;
     document.getElementById('sc-plain-summary').textContent = text;
 }
 
