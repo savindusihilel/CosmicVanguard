@@ -573,138 +573,127 @@ async def predict(data: GalaxyInput):
 @app.post("/api/starcharacterizer/predict")
 async def predict_starcharacterizer(data: GalaxyInput):
     try:
-        import glob
-        import tensorflow as tf
-        import joblib as _jl
-        import numpy as np
-        from sklearn.decomposition import PCA
-        from sklearn.linear_model import LinearRegression
+        import math, tensorflow as tf, joblib as _jl, numpy as np
+        from astropy.cosmology import Planck18 as cosmo
         from fastapi import HTTPException
 
         d = STARCHARACTERIZER_ASSETS_DIR
 
-        # Step 1 — derive colour indices
-        u_g = data.u - data.g
-        r_i = data.r - data.i
-        i_z = data.i - data.z
+        # Step 1 — apparent → absolute magnitudes via luminosity distance (Planck18)
+        d_L = cosmo.luminosity_distance(max(data.redshift, 1e-6)).value  # Mpc
+        dm  = 5.0 * np.log10(d_L) + 25.0
+        u_abs = data.u - dm
+        g_abs = data.g - dm
+        r_abs = data.r - dm
+        i_abs = data.i - dm
+        z_abs = data.z - dm
 
-        # Step 2 — assemble 9-feature vector: u,g,r,i,z,redshift,u_g,r_i,i_z
-        x = np.array([[data.u, data.g, data.r, data.i, data.z,
-                        data.redshift, u_g, r_i, i_z]], dtype=np.float32)
+        # Step 2 — absolute colour indices
+        u_g_abs = u_abs - g_abs
+        r_i_abs = r_abs - i_abs
+        i_z_abs = i_abs - z_abs
 
-        # Step 3 — scale using scaler_cosmo.pkl
+        # Step 3 — 9-feature vector matching training order:
+        # [u_abs, g_abs, r_abs, i_abs, z_abs, redshift, u_g_abs, r_i_abs, i_z_abs]
+        feature_vector = np.array([[
+            u_abs, g_abs, r_abs, i_abs, z_abs,
+            data.redshift,
+            u_g_abs, r_i_abs, i_z_abs
+        ]], dtype=np.float32)
+
+        # Step 4 — scale
         scaler = _jl.load(os.path.join(d, "scaler_cosmo.pkl"))
-        x_scaled = scaler.transform(x)
+        feature_scaled = scaler.transform(feature_vector)
 
-        # Step 4 — split: photometry slice (cols 0-4, 6-8) and redshift (col 5)
-        phot_slice   = x_scaled[:, [0, 1, 2, 3, 4, 6, 7, 8]]   # shape (1, 8)
-        redshift_col = x_scaled[:, 5:6]                          # shape (1, 1)
+        # Step 5 — split slices
+        photo_slice  = feature_scaled[:, [0, 1, 2, 3, 4, 6, 7, 8]]  # (1,8)
+        redshift_col = feature_scaled[:, 5:6]                         # (1,1)
 
-        # Step 5 — load nuisance-projection artefacts
-        alpha = float(np.load(os.path.join(d, "alpha_optimal_final.npy"))[0])
-        ols   = _jl.load(os.path.join(d, "ols_projection_final.pkl"))
+        # Step 6 — intrinsic encoder: photo_slice (8D, no redshift) → z_intrinsic (8D)
+        intr_encoder = tf.keras.models.load_model(
+            os.path.join(d, "intrinsic_encoder.keras"), safe_mode=False
+        )
+        z_raw = intr_encoder.predict(photo_slice, verbose=0)  # (1, 8)
 
-        # Step 6 — lightweight PCA(8) fitted on training latents; transform phot slice
-        z_train = np.load(os.path.join(d, "z_intrinsic_train_final.npy"))
-        pca_latent = PCA(n_components=8, random_state=42)
-        pca_latent.fit(z_train)
-        z_raw = pca_latent.transform(phot_slice)   # shape (1, 8)
-
-        # Step 7 — OLS nuisance removal: z_clean = z_raw - alpha * ols.predict(redshift)
-        ols_pred = ols.predict(redshift_col)       # shape (1, 8) or (1,)
+        # Step 7 — OLS nuisance removal
+        alpha    = float(np.load(os.path.join(d, "alpha_optimal_final.npy"))[0])
+        ols      = _jl.load(os.path.join(d, "ols_projection_final.pkl"))
+        ols_pred = ols.predict(redshift_col)
         if ols_pred.ndim == 1:
             ols_pred = ols_pred.reshape(1, -1)
-        # Align dimensions
         if ols_pred.shape[1] != z_raw.shape[1]:
-            min_dim = min(ols_pred.shape[1], z_raw.shape[1])
-            z_clean = z_raw[:, :min_dim] - alpha * ols_pred[:, :min_dim]
+            md = min(ols_pred.shape[1], z_raw.shape[1])
+            z_clean = z_raw[:, :md] - alpha * ols_pred[:, :md]
         else:
             z_clean = z_raw - alpha * ols_pred
 
         # Step 8 — PCA whitening
         pca_whitening = _jl.load(os.path.join(d, "pca_whitening_final.pkl"))
-        z_whitened = pca_whitening.transform(z_clean)
+        z_whitened    = pca_whitening.transform(z_clean)
 
-        # Step 9 — GMM soft fractions with temperature softening T=4.5
-        gmm = _jl.load(os.path.join(d, "gmm_final.pkl"))
-        gmm_proba = gmm.predict_proba(z_whitened)    # shape (1, n_components)
-        T = 4.5
-        gmm_proba = np.clip(gmm_proba, 1e-9, None)
-        gmm_proba = gmm_proba ** (1.0 / T)
+        # Step 9 — GMM soft fractions T=4.5
+        gmm       = _jl.load(os.path.join(d, "gmm_final.pkl"))
+        gmm_proba = gmm.predict_proba(z_whitened)
+        gmm_proba = np.clip(gmm_proba, 1e-9, None) ** (1.0 / 4.5)
         gmm_proba = gmm_proba / gmm_proba.sum(axis=1, keepdims=True)
-        # Use first 3 components as [young, inter, old]
         gmm_fracs = gmm_proba[0, :3]
         if gmm_fracs.sum() > 0:
             gmm_fracs = gmm_fracs / gmm_fracs.sum()
-        gmm_fracs = (gmm_fracs * 100).tolist()
+        gmm_fracs = (gmm_fracs * 100.0).tolist()
 
         # Step 10 — MLP population head
-        # Stub for EntropyRegularisation so Keras can deserialize without original training code.
         class EntropyRegularisation(tf.keras.layers.Layer):
             def __init__(self, weight=0.15, **kwargs):
-                super().__init__(**kwargs)
-                self.weight = weight
-            def call(self, inputs, training=None):
-                return inputs
+                super().__init__(**kwargs); self.weight = weight
+            def call(self, inputs, training=None): return inputs
             def get_config(self):
-                cfg = super().get_config()
-                cfg.update({"weight": self.weight})
-                return cfg
+                cfg = super().get_config(); cfg.update({"weight": self.weight}); return cfg
 
         pop_model = tf.keras.models.load_model(
             os.path.join(d, "population_model_final.keras"),
             custom_objects={"EntropyRegularisation": EntropyRegularisation},
             safe_mode=False
         )
-        mlp_raw     = pop_model.predict(z_clean, verbose=0)[0]
-        mlp_raw     = np.clip(mlp_raw, 0, None)
-        if mlp_raw.sum() > 0:
-            mlp_raw = mlp_raw / mlp_raw.sum()
-        mlp_fracs   = (mlp_raw * 100).tolist()
+        mlp_raw = np.clip(pop_model.predict(z_clean, verbose=0), 0, None)
+        mlp_raw = mlp_raw / mlp_raw.sum(axis=1, keepdims=True)
+        mlp_fracs = (mlp_raw[0] * 100.0).tolist()
 
-        # Step 11 — core metrics
+        # Step 11 — metrics
         labels        = ["Young stars", "Intermediate stars", "Old stars"]
         p             = np.array(mlp_fracs) / 100.0
         entropy       = float(-np.sum(p * np.log(p + 1e-9)))
-        certainty_pct = float((1.0 - entropy / np.log(3)) * 100.0)
+        certainty_pct = float((1.0 - entropy / math.log(3)) * 100.0)
         dominant_idx  = int(np.argmax(p))
         dominant      = labels[dominant_idx]
         gmm_p         = np.array(gmm_fracs) / 100.0
         agreement_pct = float((1.0 - np.mean(np.abs(gmm_p - p))) * 100.0)
 
-        # Step 12 — feature importance via perturbation of dominant fraction
-        def _run_mlp(ps, rc):
-            zr = pca_latent.transform(ps)
-            op = ols.predict(rc)
-            if op.ndim == 1:
-                op = op.reshape(1, -1)
+        # Step 12 — feature importance via perturbation on feature_scaled
+        nom_dom = float(mlp_raw[0, dominant_idx])
+        fi_vals = []
+        for col_idx in [6, 7, 8, 5]:  # u_g, r_i, i_z, redshift cols in feature_scaled
+            perturbed = feature_scaled.copy()
+            perturbed[0, col_idx] = 0.0
+            ps_p = perturbed[:, [0, 1, 2, 3, 4, 6, 7, 8]]
+            rc_p = perturbed[:, 5:6]
+            zr   = intr_encoder.predict(ps_p, verbose=0)
+            op   = ols.predict(rc_p)
+            if op.ndim == 1: op = op.reshape(1, -1)
             if op.shape[1] != zr.shape[1]:
-                md = min(op.shape[1], zr.shape[1])
-                zc = zr[:, :md] - alpha * op[:, :md]
+                md = min(op.shape[1], zr.shape[1]); zc = zr[:, :md] - alpha * op[:, :md]
             else:
                 zc = zr - alpha * op
-            mr = pop_model.predict(zc, verbose=0)[0]
-            mr = np.clip(mr, 0, None)
-            if mr.sum() > 0:
-                mr = mr / mr.sum()
-            return float(mr[dominant_idx])
-
-        nom_frac = _run_mlp(phot_slice, redshift_col)
-        fi_vals = []
-        for col_idx in [5, 6, 7]:   # u_g, r_i, i_z indices in phot_slice
-            ps_p = phot_slice.copy()
-            ps_p[:, col_idx] = 0.0
-            fi_vals.append(abs(nom_frac - _run_mlp(ps_p, redshift_col)))
-        fi_vals.append(abs(nom_frac - _run_mlp(phot_slice, np.zeros_like(redshift_col))))
-        fi_arr = np.array(fi_vals, dtype=np.float64)
+            mr = np.clip(pop_model.predict(zc, verbose=0), 0, None)
+            mr = mr / mr.sum(axis=1, keepdims=True)
+            fi_vals.append(abs(float(mr[0, dominant_idx]) - nom_dom))
+        fi_arr = np.array(fi_vals)
         if fi_arr.sum() > 0:
             fi_arr = fi_arr / fi_arr.sum()
         else:
-            # Perfectly certain prediction — assign equal importance as fallback
             fi_arr = np.array([0.25, 0.25, 0.25, 0.25])
         fi_pct = (fi_arr * 100.0).tolist()
 
-        # Step 13 — population confidence (normalised)
+        # Step 13 — population confidence
         pop_conf_raw = [float(p[i] / (entropy + 1.0)) for i in range(3)]
         pc_max = max(pop_conf_raw) if max(pop_conf_raw) > 0 else 1.0
         pop_conf = [round(v / pc_max * 100.0, 2) for v in pop_conf_raw]
@@ -717,7 +706,6 @@ async def predict_starcharacterizer(data: GalaxyInput):
             "entropy":         round(entropy, 6),
             "certainty_pct":   round(certainty_pct, 4),
             "agreement_pct":   round(agreement_pct, 4),
-            # Fixed research constants (11 799-galaxy SDSS test set)
             "model_r2":        0.9712,
             "model_mae":       0.0315,
             "pearson_r":       0.0161,
@@ -725,7 +713,6 @@ async def predict_starcharacterizer(data: GalaxyInput):
             "ks_stat":         0.1297,
             "reconstruction_r2": 0.9417,
             "alpha_used":      round(float(alpha), 4),
-            # Per-input dynamic outputs
             "feature_importance": {
                 "u_g":             round(fi_pct[0], 2),
                 "r_i":             round(fi_pct[1], 2),
@@ -734,63 +721,66 @@ async def predict_starcharacterizer(data: GalaxyInput):
             },
             "population_confidence": pop_conf,
             "derived": {
-                "u_g": round(float(u_g), 4),
-                "r_i": round(float(r_i), 4),
-                "i_z": round(float(i_z), 4)
+                "u_g": round(float(u_g_abs), 4),
+                "r_i": round(float(r_i_abs), 4),
+                "i_z": round(float(i_z_abs), 4)
             }
         }
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        import traceback; traceback.print_exc()
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=str(e))
 # STARCHARACTERIZER END
+
 
 # STARCHARACTERIZER START (baseline)
 @app.post("/api/starcharacterizer/baseline")
 async def baseline_starcharacterizer(data: GalaxyInput):
     try:
-        import tensorflow as tf
-        import joblib as _jl
-        import numpy as np
+        import math, tensorflow as tf, joblib as _jl, numpy as np
+        from astropy.cosmology import Planck18 as cosmo
         from fastapi import HTTPException
 
         d = STARCHARACTERIZER_ASSETS_DIR
 
-        u_g = data.u - data.g
-        r_i = data.r - data.i
-        i_z = data.i - data.z
+        # Step 1 — apparent → absolute magnitudes
+        d_L = cosmo.luminosity_distance(max(data.redshift, 1e-6)).value
+        dm  = 5.0 * np.log10(d_L) + 25.0
+        u_abs = data.u - dm; g_abs = data.g - dm; r_abs = data.r - dm
+        i_abs = data.i - dm; z_abs = data.z - dm
+        u_g_abs = u_abs - g_abs; r_i_abs = r_abs - i_abs; i_z_abs = i_abs - z_abs
 
-        x = np.array([[data.u, data.g, data.r, data.i, data.z,
-                        data.redshift, u_g, r_i, i_z]], dtype=np.float32)
-
+        # Step 2 — 9-feature vector + scale
+        feature_vector = np.array([[
+            u_abs, g_abs, r_abs, i_abs, z_abs,
+            data.redshift, u_g_abs, r_i_abs, i_z_abs
+        ]], dtype=np.float32)
         scaler = _jl.load(os.path.join(d, "scaler_cosmo.pkl"))
-        x_scaled = scaler.transform(x)
-        # basic_encoder was trained on all 9 features (full scaled vector)
-        # Encode with baseline encoder
+        feature_scaled = scaler.transform(feature_vector)
+        photo_slice    = feature_scaled[:, [0, 1, 2, 3, 4, 6, 7, 8]]
+
+        # Step 3 — basic_encoder (takes full 9-feature scaled vector)
         basic_encoder = tf.keras.models.load_model(
             os.path.join(d, "basic_encoder.keras"), safe_mode=False
         )
-        z_enc = basic_encoder.predict(x_scaled, verbose=0)
+        z_enc = basic_encoder.predict(feature_scaled, verbose=0)
 
-        # GMM with temperature softening T=4.5
-        basic_gmm = _jl.load(os.path.join(d, "basic_gmm.pkl"))
+        # Step 4 — GMM soft fractions T=4.5
+        basic_gmm  = _jl.load(os.path.join(d, "basic_gmm.pkl"))
         gmm_proba  = basic_gmm.predict_proba(z_enc)
-        T = 4.5
-        gmm_proba = np.clip(gmm_proba, 1e-9, None)
-        gmm_proba = gmm_proba ** (1.0 / T)
-        gmm_proba = gmm_proba / gmm_proba.sum(axis=1, keepdims=True)
-
-        gmm_fracs = gmm_proba[0, :3]
+        gmm_proba  = np.clip(gmm_proba, 1e-9, None) ** (1.0 / 4.5)
+        gmm_proba  = gmm_proba / gmm_proba.sum(axis=1, keepdims=True)
+        gmm_fracs  = gmm_proba[0, :3]
         if gmm_fracs.sum() > 0:
             gmm_fracs = gmm_fracs / gmm_fracs.sum()
-        gmm_fracs = (gmm_fracs * 100.0).tolist()
+        gmm_fracs  = (gmm_fracs * 100.0).tolist()
+        print(f"[DEBUG SC-BASE] GMM={gmm_fracs}")
 
-        labels      = ["Young stars", "Intermediate stars", "Old stars"]
-        p           = np.array(gmm_fracs) / 100.0
-        entropy     = float(-np.sum(p * np.log(p + 1e-9)))
-        certainty_pct = float((1.0 - entropy / np.log(3)) * 100.0)
-        dominant    = labels[int(np.argmax(p))]
+        labels        = ["Young stars", "Intermediate stars", "Old stars"]
+        p             = np.array(gmm_fracs) / 100.0
+        entropy       = float(-np.sum(p * np.log(p + 1e-9)))
+        certainty_pct = float((1.0 - entropy / math.log(3)) * 100.0)
+        dominant      = labels[int(np.argmax(p))]
 
         return {
             "labels":        labels,
@@ -802,11 +792,11 @@ async def baseline_starcharacterizer(data: GalaxyInput):
             "baseline_mae":  0.2412
         }
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        import traceback; traceback.print_exc()
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=str(e))
 # STARCHARACTERIZER END (baseline)
+
 
 # ======================
 # STARFORGE ENDPOINTS
