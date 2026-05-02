@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StarForge — Cosmic Vanguard</title>
+    <meta name="description"
+        content="Characterize stellar populations using Multi-Task Self-Supervised Learning on galaxy photometric data.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .sf-single-column {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .sf-panel {
+            background: var(--surface-2);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        }
+
+        .sf-panel h2 {
+            color: var(--purple-light);
+            font-size: 1.4rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .sf-panel>p {
+            color: var(--text-2);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Sliders */
+        .sf-sliders-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem 3rem;
+        }
+
+        .sf-slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .sf-slider-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: var(--text-2);
+            font-weight: 500;
+        }
+
+        .sf-slider-val {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--surface-1);
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: var(--surface-1);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--purple);
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* Derived Colors */
+        .sf-derived-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .sf-derived-box {
+            background: var(--surface-1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-1);
+            font-size: 1.1rem;
+        }
+
+        .sf-derived-box strong {
+            color: var(--purple-light);
+            margin-right: 0.5rem;
+        }
+
+        /* Progress Bars */
+        .sf-pop-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .sf-pop-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            color: var(--text-1);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .sf-progress-item {
+            margin-bottom: 1rem;
+        }
+
+        .sf-progress-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            margin-bottom: 0.3rem;
+            color: var(--text-2);
+        }
+
+        .sf-progress-bar-bg {
+            height: 8px;
+            background: var(--surface-3);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .sf-progress-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease-out;
+        }
+
+        .fill-young {
+            background: #3b82f6;
+        }
+
+        .fill-inter {
+            background: #eab308;
+        }
+
+        .fill-old {
+            background: #ef4444;
+        }
+
+        /* Metrics */
+        .sf-metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .sf-metric-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .sf-metric-card.highlight {
+            border-color: rgba(16, 185, 129, 0.5);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .sf-metric-label {
+            font-size: 0.9rem;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+
+        .sf-metric-val {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-1);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .sf-metric-card.highlight .sf-metric-val {
+            color: #10b981;
+        }
+
+        .sf-metric-delta {
+            font-size: 0.9rem;
+            color: #10b981;
+            margin-top: 0.5rem;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+        }
+
+        /* Tabs */
+        .sf-tabs-nav {
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .sf-tab-btn {
+            background: transparent;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            color: var(--text-2);
+            font-size: 0.95rem;
+            font-family: inherit;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: 0.2s;
+        }
+
+        .sf-tab-btn:hover {
+            color: var(--text-1);
+        }
+
+        .sf-tab-btn.active {
+            color: var(--purple-light);
+            border-bottom-color: var(--purple);
+            font-weight: 600;
+        }
+
+        .sf-tab-content {
+            display: none;
+        }
+
+        .sf-tab-content.active {
+            display: block;
+        }
+
+        .sf-green-valley-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+        }
+
+        .gv-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .gv-card h5 {
+            color: var(--purple-light);
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .gv-card p {
+            font-size: 0.8rem;
+            margin-bottom: 0.2rem;
+            color: var(--text-2);
+        }
+
+        .gv-card .gv-entropy {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: var(--text-1);
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+
+            .sf-sliders-grid,
+            .sf-derived-grid,
+            .grid-2,
+            .sf-metrics-grid,
+            .sf-green-valley-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="cv-nav scrolled" id="mainNav">
+        <div class="nav-inner">
+            <a href="/" class="nav-brand">
+                <span class="brand-icon">◆</span>
+                Cosmic<span class="brand-accent">Vanguard</span>
+            </a>
+            <div class="nav-links">
+                <a href="/galaxy" class="nav-link">GalaxyPlayground</a>
+                <a href="/quasar" class="nav-link">QuasarWatch</a>
+                <a href="/starforge" class="nav-link active">StarForge</a>
+                <a href="/starcharacterizer" class="nav-link">StarCharacterizer</a>
+                <a href="/transient" class="nav-link">TransientHunter</a>
+                <a href="/contact" class="nav-link nav-link-cta">Apply for Grant</a>
+            </div>
+            <button class="nav-toggle" id="navToggle" aria-label="Menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="app-container" style="padding-top: 5rem; padding-bottom: 5rem;">
+        <header style="text-align: center; margin-bottom: 3rem;">
+            <div class="logo">Star<span>Forge</span></div>
+            <p class="subtitle">Stellar Population Characterization via Multi-Task Self-Supervised Learning</p>
+        </header>
+
+        <main class="sf-single-column">
+
+            <!-- 1. Galaxy Photometric Inputs -->
+            <section class="sf-panel">
+                <h2>1. Galaxy Photometric Inputs</h2>
+                <p>Adjust the galaxy photometric parameters using the interactive sliders below.</p>
+                <form id="starforgeForm">
+                    <div class="sf-sliders-grid">
+                        <div class="sf-slider-group">
+                            <div class="sf-slider-header"><label>u magnitude</label><span class="sf-slider-val"
+                                    id="val_u">0.50</span></div>
+                            <input type="range" id="sf_u" min="-3.0" max="3.0" step="0.01" value="0.5">
+                        </div>
+                        <div class="sf-slider-group">
+                            <div class="sf-slider-header"><label>i magnitude</label><span class="sf-slider-val"
+                                    id="val_i">0.50</span></div>
+                            <input type="range" id="sf_i" min="-3.0" max="3.0" step="0.01" value="0.5">
+                        </div>
+                        <div class="sf-slider-group">
+                            <div class="sf-slider-header"><label>g magnitude</label><span class="sf-slider-val"
+                                    id="val_g">0.50</span></div>
+                            <input type="range" id="sf_g" min="-3.0" max="3.0" step="0.01" value="0.5">
+                        </div>
+                        <div class="sf-slider-group">
+                            <div class="sf-slider-header"><label>z magnitude</label><span class="sf-slider-val"
+                                    id="val_z">0.50</span></div>
+                            <input type="range" id="sf_z" min="-3.0" max="3.0" step="0.01" value="0.5">
+                        </div>
+                        <div class="sf-slider-group">
+                            <div class="sf-slider-header"><label>r magnitude</label><span class="sf-slider-val"
+                                    id="val_r">0.50</span></div>
+                            <input type="range" id="sf_r" min="-3.0" max="3.0" step="0.01" value="0.5">
+                        </div>
+                        <div class="sf-slider-group">
+                            <div class="sf-slider-header"><label>redshift</label><span class="sf-slider-val"
+                                    id="val_zshift">0.50</span></div>
+                            <input type="range" id="sf_redshift" min="0.0" max="2.5" step="0.01" value="0.5">
+                        </div>
+                    </div>
+                </form>
+            </section>
+
+            <!-- 2. Derived Astrophysical Features -->
+            <section class="sf-panel">
+                <h2>2. Derived Astrophysical Features</h2>
+                <p>Color indices computed from the photometric input:</p>
+                <div class="sf-derived-grid">
+                    <div class="sf-derived-box"><strong>u − g</strong><br><span id="sf_ug">0.00</span></div>
+                    <div class="sf-derived-box"><strong>r − i</strong><br><span id="sf_ri">0.00</span></div>
+                    <div class="sf-derived-box"><strong>i − z</strong><br><span id="sf_iz">0.00</span></div>
+                </div>
+            </section>
+
+            <div style="text-align: center;">
+                <button type="submit" form="starforgeForm" class="btn-primary"
+                    style="width: 100%; max-width: 400px; padding: 1rem; font-size: 1.1rem; border-radius: 8px;">
+                    Predict Stellar Population
+                </button>
+            </div>
+
+            <div id="loadingOverlay" style="display: none; text-align: center; margin: 2rem 0;">
+                <div class="spinner" style="margin: 0 auto;"></div>
+                <p style="margin-top: 1rem; color: var(--purple-light);">Running Inference...</p>
+            </div>
+
+            <div id="resultsContainer" style="display: none; flex-direction: column; gap: 2rem;">
+
+                <!-- 3. Predicted Stellar Populations -->
+                <section class="sf-panel">
+                    <h2>3. Predicted Stellar Populations</h2>
+                    <div class="grid-2">
+                        <div class="sf-pop-card">
+                            <h3>Baseline Model Prediction</h3>
+                            <div id="baseBars"></div>
+                        </div>
+                        <div class="sf-pop-card">
+                            <h3 style="color: var(--purple-light);">Research Model Prediction</h3>
+                            <div id="researchBars"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 4. Model Comparison Visualization -->
+                <section class="sf-panel">
+                    <h2>4. Model Comparison Visualization</h2>
+                    <div class="grid-2">
+                        <div class="chart-container"
+                            style="background: var(--surface-1); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <canvas id="comparisonChart" height="250"></canvas>
+                        </div>
+                        <div class="chart-container"
+                            style="background: var(--surface-1); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <canvas id="radarChart" height="250"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 5. Model Performance Comparison -->
+                <section class="sf-panel">
+                    <h2>5. Model Performance Comparison</h2>
+                    <div class="sf-metrics-grid">
+                        <div class="sf-metric-card">
+                            <span class="sf-metric-label">Base Model MAE</span>
+                            <span class="sf-metric-val">0.17802</span>
+                        </div>
+                        <div class="sf-metric-card highlight">
+                            <span class="sf-metric-label">Galactic Latent-SSL Model MAE</span>
+                            <span class="sf-metric-val">0.00248</span>
+                            <span class="sf-metric-delta">-0.17554 (Improved)</span>
+                        </div>
+                    </div>
+                    <div
+                        style="margin-top: 1.5rem; padding: 1rem; background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px;">
+                        <p style="margin: 0; font-size: 0.9rem; color: var(--text-2);">
+                            <strong style="color: var(--text-1);">Performance Insight:</strong> The research model
+                            performs significantly better because it uses multi-task representation learning, where the
+                            neural network learns galaxy representations that simultaneously reconstruct photometric
+                            data and estimate stellar population fractions. This improves the quality of the latent
+                            representation and drastically reduces prediction error.
+                        </p>
+                    </div>
+                </section>
+
+                <!-- 6. Scientific Validation -->
+                <section class="sf-panel">
+                    <h2>6. Scientific Validation</h2>
+                    <p>Advanced visualizations demonstrating the robustness and physical validity of the multi-task
+                        research model.</p>
+
+                    <div class="sf-tabs-nav">
+                        <button class="sf-tab-btn active" data-target="val-tab1"
+                            onclick="switchTab(this, 'val')">Redshift Robustness</button>
+                        <button class="sf-tab-btn" data-target="val-tab2" onclick="switchTab(this, 'val')">Transition
+                            Analysis</button>
+                        <button class="sf-tab-btn" data-target="val-tab3" onclick="switchTab(this, 'val')">Research Metrics</button>
+                    </div>
+
+                    <div class="sf-tab-content active" id="val-tab1">
+                        <p style="font-size: 0.9rem; margin-bottom: 1rem; color: var(--text-2);">Evaluating prediction
+                            error across cosmic distances.</p>
+                        <div
+                            style="background: var(--surface-1); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); height: 350px;">
+                            <canvas id="robustnessChart"></canvas>
+                        </div>
+                        <p style="font-size: 0.85rem; margin-top: 1rem; color: var(--text-3);">This visualization
+                            demonstrates that the learned 16-dimensional latent representation successfully separates
+                            galaxy distance effects (redshift) from stellar population characteristics, maintaining
+                            consistent prediction accuracy across cosmic distances.</p>
+                    </div>
+
+                    <div class="sf-tab-content" id="val-tab2">
+                        <p style="font-size: 0.9rem; margin-bottom: 1rem; color: var(--text-2);">Identifying galaxies in
+                            transitional stellar population states using prediction uncertainty.</p>
+                        <div
+                            style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px;">
+                            <p style="margin: 0; font-size: 0.9rem; color: var(--text-2);">These galaxies exhibit high
+                                prediction entropy, indicating transitional stellar population states. In astrophysics,
+                                such systems are associated with the 'Green Valley', where galaxies are undergoing
+                                quenching of star formation.</p>
+                        </div>
+                        <div class="sf-green-valley-grid" id="greenValleyContainer">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+
+                    <div class="sf-tab-content" id="val-tab3">
+                        <p style="font-size: 0.9rem; margin-bottom: 1rem; color: var(--text-2);">Research Model Quantitative Benchmarks.</p>
+                        <div style="background: var(--surface-1); padding: 2rem; border-radius: 8px; border-left: 5px solid var(--purple); border-top: 1px solid var(--border-color); border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
+                                <div>
+                                    <p style="margin: 0; font-size: 0.9rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">Base Model MAE</p>
+                                    <h3 style="margin: 0; font-size: 2rem; font-weight: 700; color: var(--text-1); font-family: 'JetBrains Mono', monospace;">0.17802</h3>
+                                </div>
+                                <div>
+                                    <p style="margin: 0; font-size: 0.9rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">Galactic Latent-SSL Model MAE</p>
+                                    <h3 style="margin: 0; font-size: 2rem; font-weight: 700; color: #10b981; font-family: 'JetBrains Mono', monospace;">0.00248</h3>
+                                </div>
+                                <div style="text-align: right;">
+                                    <p style="margin: 0; font-size: 0.9rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">Improvement Factor</p>
+                                    <h3 style="margin: 0; font-size: 2rem; font-weight: 700; color: var(--purple-light); font-family: 'JetBrains Mono', monospace;">~ 71.7x</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px;">
+                            <p style="margin: 0; font-size: 0.9rem; color: var(--text-2);">
+                                <strong>Physics-Informed Advantage:</strong> The joint learning optimization dynamically improves the representation quality. By enforcing the network to contain all necessary photometric information explicitly for reconstruction, it intrinsically extracts generalized features that avoid overfitting, leading to superior parameter prediction relative to standard supervised baseline models.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 7. Advanced Scientific Diagnostics -->
+                <section class="sf-panel">
+                    <h2>7. Advanced Scientific Diagnostics</h2>
+                    <div class="sf-tabs-nav">
+                        <button class="sf-tab-btn active" data-target="diag-tab1"
+                            onclick="switchTab(this, 'diag')">Latent Space Explorer</button>
+                        <button class="sf-tab-btn" data-target="diag-tab2"
+                            onclick="switchTab(this, 'diag')">Color–Magnitude Diagnostic</button>
+                    </div>
+
+                    <div class="sf-tab-content active" id="diag-tab1">
+                        <p style="font-size: 0.9rem; margin-bottom: 1rem; color: var(--text-2);">This visualization
+                            shows the galaxy manifold learned by the Multi-Task Self-Supervised model.</p>
+                        <div
+                            style="background: var(--surface-1); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); height: 400px; display: flex; flex-direction: column;">
+                            <canvas id="latentChart"></canvas>
+                        </div>
+                        <p style="font-size: 0.85rem; margin-top: 1rem; color: var(--text-3);">The structured clustering
+                            demonstrates that the model has learned a continuous representation of galaxy stellar
+                            populations where young and old galaxies naturally separate in latent space.</p>
+                    </div>
+
+                    <div class="sf-tab-content" id="diag-tab2">
+                        <p style="font-size: 0.9rem; margin-bottom: 1rem; color: var(--text-2);">Color-Magnitude Diagram
+                            (CMD) based on observed test samples against the user-defined galaxy.</p>
+                        <div
+                            style="background: var(--surface-1); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); height: 400px;">
+                            <canvas id="cmdChart"></canvas>
+                        </div>
+                        <p style="font-size: 0.85rem; margin-top: 1rem; color: var(--text-3);">The CMD is a standard
+                            diagnostic in galaxy evolution research. By placing the user-defined galaxy within the
+                            observed distribution, this visualization demonstrates whether the predicted stellar
+                            populations align with known astrophysical structures such as the Blue Cloud, Green Valley,
+                            and Red Sequence.</p>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // UI Logic (Sliders & Derived Colors)
+        const sliders = ['u', 'g', 'r', 'i', 'z', 'redshift'];
+        sliders.forEach(id => {
+            const input = document.getElementById('sf_' + id);
+            const display = document.getElementById('val_' + (id === 'redshift' ? 'zshift' : id));
+            input.addEventListener('input', (e) => {
+                display.innerText = parseFloat(e.target.value).toFixed(2);
+                updateDerived();
+            });
+        });
+
+        function updateDerived() {
+            const u = parseFloat(document.getElementById('sf_u').value);
+            const g = parseFloat(document.getElementById('sf_g').value);
+            const r = parseFloat(document.getElementById('sf_r').value);
+            const i = parseFloat(document.getElementById('sf_i').value);
+            const z = parseFloat(document.getElementById('sf_z').value);
+
+            document.getElementById('sf_ug').innerText = (u - g).toFixed(2);
+            document.getElementById('sf_ri').innerText = (r - i).toFixed(2);
+            document.getElementById('sf_iz').innerText = (i - z).toFixed(2);
+        }
+
+        // Tab Switching Logic
+        function switchTab(btn, group) {
+            const navs = btn.parentElement.querySelectorAll('.sf-tab-btn');
+            navs.forEach(n => n.classList.remove('active'));
+            btn.classList.add('active');
+
+            const targetId = btn.getAttribute('data-target');
+            const contents = btn.parentElement.parentElement.querySelectorAll('.sf-tab-content');
+
+            contents.forEach(c => {
+                if (c.id.startsWith(group)) {
+                    c.classList.remove('active');
+                }
+            });
+            document.getElementById(targetId).classList.add('active');
+        }
+
+        // Navigation Menu
+        const navToggle = document.getElementById('navToggle');
+        const navLinks = document.querySelector('.nav-links');
+        if (navToggle) navToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('open');
+            navToggle.classList.toggle('open');
+        });
+
+        // Initialize derived colors
+        updateDerived();
+    </script>
+    <script src="/static/starforge.js"></script>
+</body>
+
+</html>
