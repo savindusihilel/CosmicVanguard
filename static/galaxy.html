@@ -49,7 +49,16 @@
         <main class="grid-layout">
             <section class="panel input-panel" id="inputPanel">
                 <div class="panel-header" style="flex-direction: column; align-items: stretch; gap: 1rem;">
-                    <h2>Configuration</h2>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Configuration</h2>
+                        <button type="button" id="copyInputBtn" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            Copy Input JSON
+                        </button>
+                    </div>
 
                     <!-- ═══ SDSS Live Explorer ═══ -->
                     <div class="sdss-explorer" id="sdssExplorer">
@@ -219,6 +228,15 @@
 
                 <!-- ═══ Results content ═══ -->
                 <div class="results-content hidden" id="resultsContent">
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+                        <button type="button" id="copyOutputBtn" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            Copy Raw Output JSON
+                        </button>
+                    </div>
 
                     <!-- ── Target Profile ── -->
                     <div class="target-profile hidden" id="targetProfile">
