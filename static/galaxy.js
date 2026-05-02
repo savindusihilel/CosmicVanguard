@@ -407,44 +407,98 @@ async function loadTrainingLoss() {
     try {
         const res = await fetch('/api/galaxy/training-loss');
         const data = await res.json();
-        const ctx = document.getElementById('lossChart').getContext('2d');
 
+        // Determine which stages actually have data
+        const hasA = data.stageA_loss && data.stageA_loss.length > 0;
+        const hasB = data.stageB_loss && data.stageB_loss.length > 0;
+        const hasC = data.stageC_loss && data.stageC_loss.length > 0;
+
+        // Compute the total timeline length (max of present stages)
+        const epochsA = hasA ? data.epochsA.length : 0;
+        const epochsB = hasB ? data.epochsB.length : 0;
+        const epochsC = hasC ? data.epochsC.length : 0;
+        const totalEpochs = Math.max(epochsA, epochsB + (hasA ? data.epochsA.length : 0), epochsC + (hasA ? data.epochsA.length : 0) + (hasB ? data.epochsB.length : 0));
+        // Actually the original logic used separate epochs per stage; better to keep them as separate spans.
+        // We'll create labels that go from 1 to total epochs across all stages (just like before).
+        // But now we only sum epochs of stages that exist.
+        const allEpochs = [];
+        if (hasA) allEpochs.push(...data.epochsA);
+        if (hasB) allEpochs.push(...data.epochsB);
+        if (hasC) allEpochs.push(...data.epochsC);
+        const totalLength = allEpochs.length; // number of x-axis labels
+
+        const datasets = [];
+
+        // Stage A — Supervised
+        if (hasA) {
+            const stageA_loss = data.stageA_loss;
+            // Pad with nulls for subsequent stages
+            const values = [...stageA_loss, ...Array(totalLength - stageA_loss.length).fill(null)];
+            datasets.push({
+                label: 'Stage A — Supervised',
+                data: values,
+                borderColor: '#22c55e',
+                backgroundColor: 'rgba(34,197,94,0.08)',
+                fill: true,
+                borderWidth: 2,
+                tension: 0.35,
+                pointRadius: 0
+            });
+        }
+
+        // Stage B — Flow NLL
+        if (hasB) {
+            const stageB_loss = data.stageB_loss;
+            const startIdx = hasA ? data.epochsA.length : 0;
+            const values = [
+                ...Array(startIdx).fill(null),
+                ...stageB_loss,
+                ...Array(totalLength - startIdx - stageB_loss.length).fill(null)
+            ];
+            datasets.push({
+                label: 'Stage B — Flow NLL',
+                data: values,
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245,158,11,0.08)',
+                fill: true,
+                borderWidth: 2,
+                tension: 0.35,
+                pointRadius: 0
+            });
+        }
+
+        // Stage C — Physics Joint (only if data exists)
+        if (hasC) {
+            const stageC_loss = data.stageC_loss;
+            const startIdx = (hasA ? data.epochsA.length : 0) + (hasB ? data.epochsB.length : 0);
+            const values = [
+                ...Array(startIdx).fill(null),
+                ...stageC_loss,
+                ...Array(totalLength - startIdx - stageC_loss.length).fill(null)
+            ];
+            datasets.push({
+                label: 'Stage C — Physics Joint',
+                data: values,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59,130,246,0.08)',
+                fill: true,
+                borderWidth: 2,
+                tension: 0.35,
+                pointRadius: 0
+            });
+        }
+
+        if (datasets.length === 0) {
+            console.warn('No training loss data available.');
+            return;
+        }
+
+        const ctx = document.getElementById('lossChart').getContext('2d');
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: Array.from({ length: data.epochsA.length + data.epochsB.length + data.epochsC.length }, (_, i) => i + 1),
-                datasets: [
-                    {
-                        label: 'Stage A — Supervised',
-                        data: [...data.stageA_loss, ...Array(data.epochsB.length + data.epochsC.length).fill(null)],
-                        borderColor: '#22c55e',
-                        backgroundColor: 'rgba(34,197,94,0.08)',
-                        fill: true,
-                        borderWidth: 2,
-                        tension: 0.35,
-                        pointRadius: 0
-                    },
-                    {
-                        label: 'Stage B — Flow NLL',
-                        data: [...Array(data.epochsA.length).fill(null), ...data.stageB_loss, ...Array(data.epochsC.length).fill(null)],
-                        borderColor: '#f59e0b',
-                        backgroundColor: 'rgba(245,158,11,0.08)',
-                        fill: true,
-                        borderWidth: 2,
-                        tension: 0.35,
-                        pointRadius: 0
-                    },
-                    {
-                        label: 'Stage C — Physics Joint',
-                        data: [...Array(data.epochsA.length + data.epochsB.length).fill(null), ...data.stageC_loss],
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59,130,246,0.08)',
-                        fill: true,
-                        borderWidth: 2,
-                        tension: 0.35,
-                        pointRadius: 0
-                    }
-                ]
+                labels: Array.from({ length: totalLength }, (_, i) => i + 1),
+                datasets: datasets
             },
             options: {
                 responsive: true,
