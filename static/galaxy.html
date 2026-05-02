@@ -220,6 +220,26 @@
                 <!-- ═══ Results content ═══ -->
                 <div class="results-content hidden" id="resultsContent">
 
+                    <!-- ── Target Profile ── -->
+                    <div class="target-profile hidden" id="targetProfile">
+                        <div class="target-image-wrap">
+                            <img id="targetImage" src="" alt="Galaxy Cutout">
+                            <div class="target-fallback hidden" id="targetFallback">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+                                    <path d="M2 12h20"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="target-info">
+                            <div class="target-info-header">Target Identity</div>
+                            <div class="target-metric"><span class="label">ObjID</span> <span class="val" id="targetObjId">—</span></div>
+                            <div class="target-metric"><span class="label">Redshift</span> <span class="val" id="targetZ">—</span></div>
+                            <div class="target-metric"><span class="label">Source</span> <span class="val" id="targetSource">—</span></div>
+                        </div>
+                    </div>
+
                     <!-- ── KPI Metrics (always visible) ── -->
                     <div class="kpi-row" id="kpiRow">
                         <div class="kpi-card kpi-mass">

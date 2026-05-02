@@ -1,9 +1,9 @@
-/* ═══════════════════════════════════════════
-   Galaxy Predictor — Design System
-   ═══════════════════════════════════════════ */
+/* â•
+   Galaxy Predictor â€” Design System
+   â• */
 
 :root {
-    /* ─── Palette ─── */
+    /* â”€â”€â”€ Palette â”€â”€â”€ */
     --bg-body: #06080e;
     --bg-grad-start: #0d1525;
     --bg-grad-end: #040609;
@@ -46,7 +46,7 @@
     color-scheme: dark;
 }
 
-/* ─── Reset ─── */
+/* â”€â”€â”€ Reset â”€â”€â”€ */
 *,
 *::before,
 *::after {
@@ -92,7 +92,7 @@ body::after {
     pointer-events: none;
 }
 
-/* ─── Container ─── */
+/* â”€â”€â”€ Container â”€â”€â”€ */
 .app-container {
     max-width: 1320px;
     margin: 0 auto;
@@ -100,7 +100,7 @@ body::after {
     padding: 5rem 2rem 4rem;
 }
 
-/* ═══ Header ═══ */
+/*  Header  */
 header {
     margin-bottom: 3rem;
     text-align: center;
@@ -130,7 +130,7 @@ header {
     font-weight: 400;
 }
 
-/* ═══ Layout ═══ */
+/*  Layout  */
 .grid-layout {
     display: grid;
     grid-template-columns: 360px 1fr;
@@ -144,7 +144,7 @@ header {
     }
 }
 
-/* ═══ Glass Panels ═══ */
+/*  Glass Panels  */
 .panel {
     background: var(--surface-0);
     backdrop-filter: blur(16px) saturate(1.3);
@@ -155,7 +155,7 @@ header {
     position: relative;
 }
 
-/* ═══ Input Panel ═══ */
+/*  Input Panel  */
 .input-panel {
     position: sticky;
     top: 2rem;
@@ -178,7 +178,7 @@ header {
     letter-spacing: 0.08em;
 }
 
-/* ── Preset Buttons ── */
+/* â”€â”€ Preset Buttons â”€â”€ */
 .preset-buttons {
     display: flex;
     gap: 0.5rem;
@@ -235,7 +235,7 @@ header {
     background: var(--text-3);
 }
 
-/* ── Forms ── */
+/* â”€â”€ Forms â”€â”€ */
 .input-group {
     margin-bottom: 1.5rem;
 }
@@ -315,7 +315,7 @@ input[type="number"] {
     appearance: textfield;
 }
 
-/* ── Demo Galaxy Selector ── */
+/* â”€â”€ Demo Galaxy Selector â”€â”€ */
 .demo-controls {
     display: flex;
     flex-direction: column;
@@ -382,7 +382,7 @@ input[type="number"] {
     color: var(--text-1);
 }
 
-/* ── Truth Comparison Bar ── */
+/* â”€â”€ Truth Comparison Bar â”€â”€ */
 .truth-bar {
     background: linear-gradient(135deg, rgba(34, 197, 94, 0.04), rgba(59, 130, 246, 0.03));
     border: 1px solid rgba(34, 197, 94, 0.18);
@@ -486,7 +486,7 @@ input[type="number"] {
     background: rgba(239, 68, 68, 0.12);
 }
 
-/* ── Primary Button ── */
+/* â”€â”€ Primary Button â”€â”€ */
 .btn-primary {
     width: 100%;
     padding: 0.85rem 1.5rem;
@@ -516,7 +516,7 @@ input[type="number"] {
     transform: translateY(0);
 }
 
-/* ═══ Result Panel ═══ */
+/*  Result Panel  */
 .result-panel {
     min-height: 500px;
     display: flex;
@@ -564,7 +564,7 @@ input[type="number"] {
     line-height: 1.6;
 }
 
-/* ═══ Loading ═══ */
+/*  Loading  */
 .loading-overlay {
     position: absolute;
     inset: 0;
@@ -604,7 +604,7 @@ input[type="number"] {
     }
 }
 
-/* ═══ Results Content ═══ */
+/*  Results Content  */
 .hidden {
     display: none !important;
 }
@@ -625,7 +625,85 @@ input[type="number"] {
     animation: fadeUp 0.4s var(--ease-out);
 }
 
-/* ═══ KPI Row ═══ */
+/*  Target Profile  */
+.target-profile {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.25rem;
+    animation: fadeUp 0.4s var(--ease-out);
+}
+
+.target-image-wrap {
+    width: 140px;
+    border-radius: var(--radius-lg);
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-shadow: 0 0 20px var(--accent-glow);
+    flex-shrink: 0;
+}
+
+#targetImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.target-fallback {
+    color: var(--text-3);
+    opacity: 0.5;
+}
+
+.target-info {
+    flex: 1;
+    background: linear-gradient(135deg, var(--surface-1), var(--surface-2));
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.target-info-header {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent-bright);
+    margin-bottom: 0.85rem;
+}
+
+.target-metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.target-metric:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.target-metric .label {
+    font-size: 0.8rem;
+    color: var(--text-2);
+    font-weight: 500;
+}
+
+.target-metric .val {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--text-0);
+    font-weight: 400;
+}
+
+/* â• â• â•  KPI Row â• â• â•  */
 .kpi-row {
     display: flex;
     align-items: stretch;
@@ -695,7 +773,7 @@ input[type="number"] {
     border: 1px solid rgba(59, 130, 246, 0.12);
 }
 
-/* ═══ Quenching Card ═══ */
+/*  Quenching Card  */
 .quenching-card {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0.008) 100%);
     border: 1px solid var(--border-default);
@@ -828,7 +906,7 @@ input[type="number"] {
     min-height: 1px;
 }
 
-/* ═══ Tab System ═══ */
+/*  Tab System  */
 .tab-system {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.005) 100%);
     border: 1px solid var(--border-default);
@@ -962,7 +1040,7 @@ input[type="number"] {
     flex-shrink: 0;
 }
 
-/* ── Interpretation ── */
+/* â”€â”€ Interpretation â”€â”€ */
 .interpretation-text {
     font-size: 0.9rem;
     color: var(--text-1);
@@ -975,7 +1053,7 @@ input[type="number"] {
     white-space: pre-line;
 }
 
-/* ── Feature Importance ── */
+/* â”€â”€ Feature Importance â”€â”€ */
 .feature-chart {
     margin-top: 0.5rem;
 }
@@ -1027,7 +1105,7 @@ input[type="number"] {
     font-weight: 500;
 }
 
-/* ── Charts ── */
+/* â”€â”€ Charts â”€â”€ */
 .chart-wrap {
     background: rgba(0, 0, 0, 0.15);
     border: 1px solid var(--border-subtle);
@@ -1044,7 +1122,7 @@ input[type="number"] {
     font-style: italic;
 }
 
-/* ── Comparison ── */
+/* â”€â”€ Comparison â”€â”€ */
 .comparison-subtitle {
     font-size: 0.85rem;
     color: var(--text-3);
@@ -1126,7 +1204,7 @@ input[type="number"] {
     color: var(--text-2);
 }
 
-/* ═══ Tooltips ═══ */
+/*  Tooltips  */
 .info-trigger {
     position: relative;
     cursor: help;
@@ -1246,7 +1324,7 @@ input[type="number"] {
     visibility: visible;
 }
 
-/* ── RF Metrics ── */
+/* â”€â”€ RF Metrics â”€â”€ */
 .diagnostics-divider {
     height: 1px;
     background: linear-gradient(90deg, transparent, var(--border-subtle), transparent);
@@ -1364,7 +1442,7 @@ input[type="number"] {
     background: rgba(239, 68, 68, 0.08);
 }
 
-/* ── Dual Comparison Charts ── */
+/* â”€â”€ Dual Comparison Charts â”€â”€ */
 .chart-pair {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1446,13 +1524,13 @@ input[type="number"] {
     }
 }
 
-/* ═══════════════════════════════════════════
+/* â•
    SDSS Live Explorer
-   ═══════════════════════════════════════════ */
+   â• */
 
 .sdss-explorer {
     padding: 1rem;
-    background: rgba(0,0,0,0.15);
+    background: rgba(0, 0, 0, 0.15);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
 }
@@ -1475,20 +1553,27 @@ input[type="number"] {
     height: 6px;
     border-radius: 50%;
     background: #22c55e;
-    box-shadow: 0 0 8px rgba(34,197,94,0.5);
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
     animation: pulse-dot 2s ease-in-out infinite;
 }
 
 @keyframes pulse-dot {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
 }
 
 /* Tabs */
 .sdss-tabs {
     display: flex;
     gap: 2px;
-    background: rgba(0,0,0,0.25);
+    background: rgba(0, 0, 0, 0.25);
     border-radius: var(--radius-sm);
     padding: 3px;
     border: 1px solid var(--border-subtle);
@@ -1513,16 +1598,23 @@ input[type="number"] {
     transition: all 0.2s ease;
 }
 
-.sdss-tab:hover { color: var(--text-1); }
+.sdss-tab:hover {
+    color: var(--text-1);
+}
 
 .sdss-tab.active {
-    background: rgba(59,130,246,0.15);
+    background: rgba(59, 130, 246, 0.15);
     color: var(--accent-bright);
 }
 
 /* Panels */
-.sdss-panel { display: none; }
-.sdss-panel.active { display: block; }
+.sdss-panel {
+    display: none;
+}
+
+.sdss-panel.active {
+    display: block;
+}
 
 /* Search row */
 .sdss-search-row {
@@ -1532,7 +1624,7 @@ input[type="number"] {
 
 .sdss-input {
     flex: 1;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--border-subtle);
     color: var(--text-0);
     padding: 0.55rem 0.75rem;
@@ -1545,14 +1637,16 @@ input[type="number"] {
 .sdss-input:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }
 
-.sdss-input::placeholder { color: var(--text-3); }
+.sdss-input::placeholder {
+    color: var(--text-3);
+}
 
 .sdss-input-sm {
     width: 100%;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--border-subtle);
     color: var(--text-0);
     padding: 0.45rem 0.5rem;
@@ -1582,8 +1676,16 @@ input[type="number"] {
     flex-shrink: 0;
 }
 
-.sdss-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
-.sdss-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.sdss-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.sdss-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
 
 .sdss-btn-wide {
     width: 100%;
@@ -1594,7 +1696,8 @@ input[type="number"] {
 }
 
 /* Controls layout */
-.sdss-random-controls, .sdss-region-controls {
+.sdss-random-controls,
+.sdss-region-controls {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     gap: 0.5rem;
@@ -1617,7 +1720,7 @@ input[type="number"] {
 
 .sdss-range-group select {
     width: 100%;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--border-subtle);
     color: var(--text-0);
     padding: 0.45rem 1.8rem 0.45rem 0.6rem;
@@ -1659,7 +1762,7 @@ input[type="number"] {
     flex-direction: column;
     gap: 4px;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.1) transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
 .sdss-no-results {
@@ -1667,7 +1770,7 @@ input[type="number"] {
     text-align: center;
     color: var(--text-3);
     font-size: 0.8rem;
-    background: rgba(0,0,0,0.12);
+    background: rgba(0, 0, 0, 0.12);
     border: 1px dashed var(--border-subtle);
     border-radius: var(--radius-sm);
     margin: 0.5rem 0;
@@ -1680,7 +1783,7 @@ input[type="number"] {
     align-items: center;
     gap: 0.6rem;
     padding: 0.5rem;
-    background: rgba(255,255,255,0.02);
+    background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-sm);
     cursor: pointer;
@@ -1688,14 +1791,14 @@ input[type="number"] {
 }
 
 .sdss-galaxy-card:hover {
-    background: rgba(59,130,246,0.06);
-    border-color: rgba(59,130,246,0.2);
+    background: rgba(59, 130, 246, 0.06);
+    border-color: rgba(59, 130, 246, 0.2);
 }
 
 .sdss-galaxy-card.selected {
-    background: rgba(59,130,246,0.1);
+    background: rgba(59, 130, 246, 0.1);
     border-color: var(--accent);
-    box-shadow: 0 0 0 1px rgba(59,130,246,0.15);
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.15);
 }
 
 .sdss-card-thumb-wrap {
@@ -1703,13 +1806,13 @@ input[type="number"] {
     height: 40px;
     border-radius: 4px;
     overflow: hidden;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0, 0, 0, 0.3);
     flex-shrink: 0;
     position: relative;
 }
 
 .sdss-card-thumb-wrap.loading {
-    background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.06) 50%, rgba(255, 255, 255, 0.03) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
 }
@@ -1750,8 +1853,8 @@ input[type="number"] {
 }
 
 .sdss-card-select {
-    background: rgba(59,130,246,0.1);
-    border: 1px solid rgba(59,130,246,0.2);
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
     color: var(--accent-bright);
     width: 28px;
     height: 28px;
@@ -1766,7 +1869,7 @@ input[type="number"] {
 }
 
 .sdss-card-select:hover {
-    background: rgba(59,130,246,0.25);
+    background: rgba(59, 130, 246, 0.25);
     transform: scale(1.1);
 }
 
@@ -1780,17 +1883,24 @@ input[type="number"] {
 
 .sdss-skeleton {
     height: 44px;
-    background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.06) 50%, rgba(255, 255, 255, 0.03) 75%);
     background-size: 200% 100%;
     border-radius: var(--radius-sm);
     animation: shimmer 1.5s infinite;
 }
 
-.sdss-skeleton.short { width: 60%; }
+.sdss-skeleton.short {
+    width: 60%;
+}
 
 @keyframes shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 /* Error toast */
@@ -1798,7 +1908,7 @@ input[type="number"] {
     margin-top: 0.5rem;
     padding: 0.5rem 0.75rem;
     background: var(--red-surface);
-    border: 1px solid rgba(239,68,68,0.2);
+    border: 1px solid rgba(239, 68, 68, 0.2);
     border-radius: var(--radius-sm);
     color: #f87171;
     font-size: 0.75rem;
@@ -1811,8 +1921,8 @@ input[type="number"] {
     align-items: flex-start;
     gap: 10px;
     padding: 0.85rem 1rem;
-    background: linear-gradient(135deg, rgba(59,130,246,0.04), rgba(59,130,246,0.02));
-    border: 1px solid rgba(59,130,246,0.12);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.04), rgba(59, 130, 246, 0.02));
+    border: 1px solid rgba(59, 130, 246, 0.12);
     border-radius: var(--radius-sm);
     color: var(--text-1);
     font-size: 0.78rem;
@@ -1843,7 +1953,7 @@ input[type="number"] {
     line-height: 1.4;
 }
 
-/* ── SDSS explorer box alignment fix ── */
+/* â”€â”€ SDSS explorer box alignment fix â”€â”€ */
 .sdss-range-group select,
 .sdss-range-group .sdss-input-sm {
     height: 36px;
@@ -1855,10 +1965,13 @@ input[type="number"] {
     align-items: end;
 }
 
-/* ── Chart Loading Overlay ── */
+/* â”€â”€ Chart Loading Overlay â”€â”€ */
 .chart-loading {
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background: rgba(15, 23, 42, 0.7);
     display: flex;
     flex-direction: column;
@@ -1883,5 +1996,21 @@ input[type="number"] {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 768px) {
+    .target-profile {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .target-image-wrap {
+        width: 100%;
+        height: auto;
+        max-width: 200px;
+    }
 }
