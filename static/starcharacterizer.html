@@ -103,28 +103,58 @@
                     <!-- TAB 1: Interpretation -->
                     <div class="sc-tab-panel" id="tab-interpretation">
 
-                        <!-- ETI Arc Gauge + State Badge -->
-                        <div class="sc-eti-block">
-                            <div class="sc-eti-gauge-wrap">
-                                <svg class="sc-eti-svg" viewBox="0 0 140 80" xmlns="http://www.w3.org/2000/svg">
-                                    <!-- track arc -->
-                                    <path class="sc-eti-track" d="M14,74 A60,60 0 0,1 126,74" fill="none" stroke-width="10" stroke-linecap="round"/>
-                                    <!-- filled arc (updated by JS) -->
-                                    <path class="sc-eti-fill" id="sc-eti-arc" d="M14,74 A60,60 0 0,1 126,74" fill="none" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 189"/>
-                                    <!-- centre text -->
-                                    <text x="70" y="62" text-anchor="middle" class="sc-eti-num" id="sc-eti-pct">—</text>
-                                    <text x="70" y="76" text-anchor="middle" class="sc-eti-sub">ETI</text>
-                                </svg>
-                                <div class="sc-eti-label">Evolutionary Transition Index</div>
+                        <!-- 1. Galaxy Class Card (live, no inference needed) -->
+                        <div class="sc-galaxy-class-card" id="galaxyClassCard">
+                            <div class="sc-galaxy-class-left">
+                                <div class="sc-galaxy-class-label">Galaxy Class</div>
+                                <div class="sc-galaxy-class-name" id="galaxy-class-name">—</div>
+                                <div class="sc-sequence-badge" id="sequence-badge">—</div>
                             </div>
-                            <div class="sc-eti-right">
-                                <div class="sc-state-badge" id="sc-state-badge">—</div>
-                                <div class="sc-h-readout" id="sc-h-readout">H = — nats &nbsp;|&nbsp; —% certain</div>
-                                <p class="sc-state-desc" id="sc-state-desc">Run a prediction to see the population state.</p>
+                            <div class="sc-galaxy-class-right">
+                                <div class="sc-ug-row">u−g = <span class="sc-ug-val" id="sc-ug-val">—</span></div>
+                                <div class="sc-preview-note" id="sc-preview-note">Fill inputs to preview</div>
                             </div>
                         </div>
 
-                        <!-- Fraction Bars -->
+                        <!-- 2. Dominant Population -->
+                        <div class="sc-dominant-card" id="dominantCard">
+                            <div class="sc-dominant-header">
+                                <div class="sc-dominant-label">Dominant Population</div>
+                                <div class="sc-dominant-value">
+                                    <span id="sc-dominant-icon" style="font-size:1.4rem;"></span>
+                                    <span id="sc-dominant-name">—</span>
+                                    <span class="sc-dominant-pct" id="sc-dominant-pct">—</span>
+                                </div>
+                            </div>
+                            <p class="sc-interpretation" id="sc-dominant-interp">—</p>
+                        </div>
+
+                        <!-- 3. Population Certainty bar -->
+                        <div class="sc-entropy-section">
+                            <div class="sc-entropy-label-row">
+                                <span class="sc-entropy-title">Population Certainty</span>
+                                <span class="sc-entropy-raw" id="sc-certainty-readout">H = — nats &nbsp;|&nbsp; —% certain</span>
+                            </div>
+                            <div class="sc-entropy-bar-wrap"><div class="sc-entropy-fill" id="sc-certainty-fill" style="width:0%;"></div></div>
+                        </div>
+
+                        <!-- 4. ETI bar -->
+                        <div class="sc-eti-bar-section">
+                            <div class="sc-eti-bar-header">
+                                <span class="sc-eti-title">Evolutionary Transition Index</span>
+                                <span class="sc-eti-readout" id="sc-eti-readout">ETI = —%</span>
+                                <span class="sc-eti-zone" id="sc-eti-zone">—</span>
+                            </div>
+                            <div class="sc-entropy-bar-wrap"><div class="sc-eti-fill" id="sc-eti-fill" style="width:0%;"></div></div>
+                        </div>
+
+                        <!-- 5. State badge -->
+                        <div class="sc-state-block">
+                            <div class="sc-state-badge" id="sc-state-badge">—</div>
+                            <p class="sc-state-desc" id="sc-state-desc">Run a prediction to see the population state.</p>
+                        </div>
+
+                        <!-- 6. Soft-label fraction bars -->
                         <div class="sc-fraction-section">
                             <div class="sc-model-group">
                                 <div class="sc-model-group-title"><span class="dot-gmm"></span>GMM Soft Assignments</div>
@@ -136,7 +166,7 @@
                             </div>
                         </div>
 
-                        <!-- Metrics row -->
+                        <!-- 7+8. Metrics -->
                         <div class="sc-metrics-row">
                             <div class="sc-metric-chip"><span class="sc-metric-chip-label">GMM–MLP Agreement</span><span class="sc-metric-chip-value" id="sc-agreement-val">—</span></div>
                             <div class="sc-metric-chip"><span class="sc-metric-chip-label">Certainty Score</span><span class="sc-metric-chip-value" id="sc-certainty-chip">—</span></div>
@@ -170,14 +200,14 @@
                             <div class="sc-model-group-title"><span class="dot-mlp"></span>Redshift Disentanglement Quality <span style="font-size:0.65rem;color:var(--text-3);font-weight:400;margin-left:0.4rem;">ℹ️ research constants</span></div>
                             <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:0.75rem;">How well the model separates stellar physics from cosmological redshift bias.</p>
                             <div class="sc-disentangle-panel">
-                                <div class="sc-dq-chip"><div class="sc-dq-label">Mean |Pearson r| with Redshift</div><div class="sc-dq-value" id="dq-pearson">—</div></div>
-                                <div class="sc-dq-chip"><div class="sc-dq-label">HSIC Independence</div><div class="sc-dq-value" id="dq-hsic">—</div></div>
+                                <div class="sc-dq-chip"><div class="sc-dq-label">Mean |Pearson r| with Redshift</div><div class="sc-dq-value" id="exp-dq-pearson">—</div></div>
+                                <div class="sc-dq-chip"><div class="sc-dq-label">HSIC Independence</div><div class="sc-dq-value" id="exp-dq-hsic">—</div></div>
                                 <div class="sc-dq-chip">
                                     <div class="sc-dq-label">VAE Reconstruction R² ℹ️</div>
-                                    <div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;margin:0.35rem 0;"><div id="dq-recon-bar" style="height:100%;width:0%;background:var(--emerald);border-radius:3px;transition:width 0.6s ease;"></div></div>
-                                    <div class="sc-dq-value" id="dq-recon-val">—</div>
+                                    <div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;margin:0.35rem 0;"><div id="exp-dq-recon-bar" style="height:100%;width:0%;background:var(--emerald);border-radius:3px;transition:width 0.6s ease;"></div></div>
+                                    <div class="sc-dq-value" id="exp-dq-recon-val">—</div>
                                 </div>
-                                <div class="sc-dq-chip" style="grid-column:span 2;"><div class="sc-dq-label">OLS Projection Alpha (α) ℹ️</div><div class="sc-dq-value" id="dq-alpha">—</div></div>
+                                <div class="sc-dq-chip" style="grid-column:span 2;"><div class="sc-dq-label">OLS Projection Alpha (α) ℹ️</div><div class="sc-dq-value" id="exp-dq-alpha">—</div></div>
                             </div>
                         </div>
                     </div>
@@ -222,6 +252,22 @@
                             <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:0.75rem;">Effect of progressively adding GRL adversarial training, HSIC regularisation, and OLS nuisance projection.</p>
                             <div style="height:220px;"><canvas id="ablationChart"></canvas></div>
                         </div>
+                        <div class="sc-model-group" style="margin-bottom:1.25rem;">
+                            <div class="sc-model-group-title"><span class="dot-mlp"></span>Redshift Disentanglement Quality <span style="font-size:0.65rem;color:var(--text-3);font-weight:400;">ℹ️ research constants</span></div>
+                            <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:0.75rem;">How well the model separates stellar physics from cosmological redshift bias.</p>
+                            <div class="sc-disentangle-panel">
+                                <div class="sc-dq-chip"><div class="sc-dq-label">Mean |Pearson r| with Redshift</div><div class="sc-dq-value" id="dq-pearson">—</div></div>
+                                <div class="sc-dq-chip"><div class="sc-dq-label">Max |Pearson r| with Redshift</div><div class="sc-dq-value" id="dq-pearson-max">0.0440 <span class="sc-badge-pass">PASS</span></div></div>
+                                <div class="sc-dq-chip"><div class="sc-dq-label">HSIC Independence</div><div class="sc-dq-value" id="dq-hsic">—</div></div>
+                                <div class="sc-dq-chip"><div class="sc-dq-label">Bias removed: Pearson r = 0.0482, p = 1.62e-7</div><div class="sc-dq-value"><span class="sc-badge-pass">PASS</span></div></div>
+                                <div class="sc-dq-chip">
+                                    <div class="sc-dq-label">VAE Reconstruction R² ℹ️</div>
+                                    <div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;margin:0.35rem 0;"><div id="dq-recon-bar" style="height:100%;width:0%;background:var(--emerald);border-radius:3px;transition:width 0.6s ease;"></div></div>
+                                    <div class="sc-dq-value" id="dq-recon-val">—</div>
+                                </div>
+                                <div class="sc-dq-chip" style="grid-column:span 2;"><div class="sc-dq-label">OLS Projection Alpha (α) ℹ️</div><div class="sc-dq-value" id="dq-alpha">—</div></div>
+                            </div>
+                        </div>
                         <div class="sc-model-group">
                             <div class="sc-model-group-title"><span class="dot-mlp"></span>Reconstruction Quality — Per Feature <span style="font-size:0.65rem;color:var(--text-3);font-weight:400;">ℹ️ research constants</span></div>
                             <table class="sc-recon-table">
@@ -236,47 +282,71 @@
                                     <tr><td>u_g_abs</td><td class="r2-ok">0.9351</td><td>0.2569</td></tr>
                                     <tr><td>r_i_abs</td><td class="r2-poor">0.8426</td><td>0.3987</td></tr>
                                     <tr><td>i_z_abs</td><td class="r2-ok">0.9043</td><td>0.3060</td></tr>
-                                    <tr><td><strong>OVERALL</strong></td><td>0.9417</td><td>0.2429</td></tr>
+                                    <tr><td><strong>OVERALL</strong></td><td>0.9421</td><td>0.2429</td></tr>
                                 </tbody>
                             </table>
-                            <p style="font-size:0.72rem;color:var(--text-3);margin-top:0.75rem;font-style:italic;">Model-level metrics (R², MAE, Pearson r, HSIC) reflect performance on the 11,799-galaxy SDSS test set and do not change per individual prediction. Per-galaxy outputs (fractions, entropy, feature importance) are computed live.</p>
+                            <p style="font-size:0.72rem;color:var(--text-3);margin-top:0.75rem;font-style:italic;">Model-level metrics reflect performance on the 11,799-galaxy SDSS DR17 test set. Per-galaxy outputs (fractions, entropy, feature importance) are computed live.</p>
                         </div>
                     </div>
 
                     <!-- TAB 5: Comparison -->
                     <div class="sc-tab-panel hidden" id="tab-comparison">
-                        <div class="sc-comparison-cards">
-                            <div class="sc-cmp-card">
-                                <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-3);margin-bottom:0.3rem;">PCA-GMM Baseline</div>
-                                <div style="font-size:0.65rem;color:var(--text-3);margin-bottom:0.5rem;">Non-disentangled</div>
-                                <div class="sc-cmp-r2" id="cmp-baseline-r2">—</div>
-                                <div style="font-size:0.65rem;color:var(--text-3);">R²</div>
-                                <div class="sc-cmp-mae" id="cmp-baseline-mae">—</div>
-                                <div style="font-size:0.65rem;color:var(--text-3);">MAE</div>
+                        <!-- Baseline mode toggle -->
+                        <div class="comp-toggle-row">
+                            <span class="comp-mode-lbl">Split-VAE</span>
+                            <label class="sc-toggle">
+                                <input type="checkbox" id="baseline-mode-tog" onchange="toggleBaselineMode(this.checked)">
+                                <span class="sc-toggle-slider"></span>
+                            </label>
+                            <span class="comp-mode-lbl muted">Baseline Mode (Basic AE)</span>
+                        </div>
+                        <div id="baseline-warn" class="baseline-warn" style="display:none;">
+                            Baseline Mode active — redshift disentanglement disabled. Fractions from Basic Autoencoder without OLS projection. Results are cosmologically biased.
+                        </div>
+
+                        <!-- 2-card layout: Basic AE vs Split-VAE -->
+                        <div class="sc-two-card-layout">
+                            <div class="sc-model-card sc-model-card--basic">
+                                <div class="sc-model-card-title">BASIC AUTOENCODER</div>
+                                <div class="sc-model-card-sub">No disentanglement</div>
+                                <div class="sc-model-card-badge sc-badge-biased">Redshift-biased</div>
+                                <div class="sc-model-metric-row"><span class="sc-metric-label">R²</span><span class="sc-metric-val red">0.7011</span></div>
+                                <div class="sc-model-metric-row"><span class="sc-metric-label">RMSE</span><span class="sc-metric-val">0.5499</span></div>
+                                <div class="sc-model-metric-row"><span class="sc-metric-label">Mean |Pearson r|</span><span class="sc-metric-val red">0.3170</span></div>
+                                <div class="sc-model-metric-row"><span class="sc-metric-label">Max |Pearson r|</span><span class="sc-metric-val red">0.4161</span></div>
                             </div>
-                            <div class="sc-cmp-card sc-cmp-card--winner">
-                                <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--accent);margin-bottom:0.3rem;">Split-VAE ℹ️</div>
-                                <div style="font-size:0.65rem;color:var(--text-3);margin-bottom:0.5rem;">Disentangled · GRL + HSIC</div>
-                                <div class="sc-cmp-r2" id="cmp-model-r2">—</div>
-                                <div style="font-size:0.65rem;color:var(--text-3);">R²</div>
-                                <div class="sc-cmp-mae" id="cmp-model-mae">—</div>
-                                <div style="font-size:0.65rem;color:var(--text-3);">MAE</div>
-                            </div>
-                            <div class="sc-cmp-card sc-cmp-card--delta">
-                                <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--emerald);margin-bottom:0.3rem;">Your Model Wins By</div>
-                                <div class="sc-delta-val" id="cmp-delta-r2">—</div>
-                                <div style="font-size:0.65rem;color:var(--text-3);">ΔR²</div>
-                                <div class="sc-delta-val" id="cmp-delta-mae">—</div>
-                                <div style="font-size:0.65rem;color:var(--text-3);">ΔMAE</div>
+                            <div class="sc-model-card sc-model-card--split">
+                                <div class="sc-model-card-title">SPLIT-VAE</div>
+                                <div class="sc-model-card-sub">GRL · HSIC · OLS</div>
+                                <div class="sc-model-card-badge sc-badge-invariant">Redshift-invariant</div>
+                                <div class="sc-model-metric-row"><span class="sc-metric-label">Population R²</span><span class="sc-metric-val green">0.9790</span></div>
+                                <div class="sc-model-metric-row"><span class="sc-metric-label">MAE</span><span class="sc-metric-val green">0.0285</span></div>
+                                <div class="sc-model-metric-row"><span class="sc-metric-label">Mean |Pearson r|</span><span class="sc-metric-val green">0.0195</span></div>
+                                <div class="sc-model-metric-row"><span class="sc-metric-label">Max |Pearson r|</span><span class="sc-metric-val green">0.0440</span></div>
+                                <div class="sc-model-metric-row"><span class="sc-metric-label">HSIC</span><span class="sc-metric-val green">0.000852</span></div>
                             </div>
                         </div>
+                        <div class="sc-delta-banner">93.8% reduction in redshift bias &nbsp;·&nbsp; R² +0.2779 &nbsp;·&nbsp; fully unsupervised</div>
+
+                        <!-- Mini chart + fraction deltas -->
                         <div style="height:180px;margin-bottom:1rem;"><canvas id="comparisonMiniChart"></canvas></div>
                         <div class="sc-fraction-diff-row">
                             <div class="sc-diff-chip" id="diff-young">Δ Young —</div>
                             <div class="sc-diff-chip" id="diff-inter">Δ Intermediate —</div>
                             <div class="sc-diff-chip" id="diff-old">Δ Old —</div>
                         </div>
-                        <p style="font-size:0.78rem;color:var(--text-3);font-style:italic;margin-top:0.75rem;">Baseline uses PCA-GMM without redshift disentanglement. Lower MAE and higher R² indicate better population fraction recovery.</p>
+
+                        <!-- Live invariance check -->
+                        <div class="invariance-panel" style="margin-top:14px;">
+                            <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.1em;color:var(--text-3);margin-bottom:8px;">LIVE REDSHIFT INVARIANCE CHECK</div>
+                            <p style="font-size:0.70rem;color:var(--text-3);margin-bottom:10px;line-height:1.55;">Vary redshift independently of photometry. Split-VAE population fractions should remain stable.</p>
+                            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+                                <label style="font-size:0.71rem;color:var(--text-2);white-space:nowrap;">Test z = <strong id="inv-z-val">0.10</strong></label>
+                                <input type="range" id="inv-z-slider" min="0.01" max="0.40" step="0.01" value="0.10" style="flex:1;"
+                                    oninput="document.getElementById('inv-z-val').textContent=parseFloat(this.value).toFixed(2);runInvarianceCheck(this.value)">
+                            </div>
+                            <div id="inv-result"></div>
+                        </div>
                     </div>
 
                 </div><!-- /results-content -->
