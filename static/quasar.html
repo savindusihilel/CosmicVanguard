@@ -81,6 +81,30 @@
                 transform: translateY(0);
             }
         }
+
+        .quasar-chip {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-2);
+            font-size: 0.78rem;
+            font-weight: 500;
+            padding: 0.35rem 0.85rem;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .quasar-chip:hover {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.4);
+            color: var(--text-1);
+            transform: translateY(-1px);
+        }
+
+        .quasar-chip:active {
+            transform: scale(0.97);
+        }
     </style>
 </head>
 
@@ -111,23 +135,64 @@
             <p class="subtitle">Uncertainty-Aware Temporal Deep Learning for Quasar Light Curves</p>
         </header>
 
-        <!-- Controls -->
-        <div class="quasar-controls">
-            <select id="sampleSelector" class="quasar-select">
-                <option value="">Select a quasar sample…</option>
-            </select>
-            <button class="btn-primary" id="runQuasarBtn" style="width:auto; padding: 0.65rem 2rem;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-                Run Forecast
-            </button>
+        <!-- Search Controls -->
+        <div class="quasar-controls" style="flex-direction: column; gap: 1rem;">
+            <div style="display: flex; gap: 0.75rem; width: 100%; align-items: center; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 280px; position: relative;">
+                    <svg style="position:absolute; left:14px; top:50%; transform:translateY(-50%); opacity:0.4;"
+                        width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input type="text" id="quasarSearchInput" class="quasar-select"
+                        placeholder="Enter quasar name or ID (e.g., 3C 273, PG 1302-102)"
+                        style="padding-left: 2.5rem; width: 100%; box-sizing: border-box;" />
+                </div>
+                <button class="btn-primary" id="runQuasarBtn"
+                    style="width:auto; padding: 0.65rem 2rem; white-space: nowrap;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    Search &amp; Forecast
+                </button>
+                <span style="color: var(--text-3); font-size:0.85rem; font-weight:500; white-space:nowrap;">or</span>
+                <input type="file" id="quasarFileInput" accept=".csv" style="display:none;" />
+                <button class="btn-secondary" id="browseFileBtn"
+                    style="width:auto; padding: 0.65rem 1.5rem; white-space: nowrap; background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.35); color: #a5b4fc; border-radius: 8px; cursor:pointer; font-size:0.88rem; font-weight:600; transition: all 0.2s;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:6px;">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    Browse CSV
+                </button>
+            </div>
+            <div class="quasar-suggestions" style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                <span style="color: var(--text-3); font-size:0.8rem; font-weight:500;">Try:</span>
+                <button class="quasar-chip" data-name="3C 273">3C 273</button>
+                <button class="quasar-chip" data-name="3C 48">3C 48</button>
+                <button class="quasar-chip" data-name="PG 1302-102">PG 1302-102</button>
+                <button class="quasar-chip" data-name="Markarian 421">Mrk 421</button>
+                <button class="quasar-chip" data-name="PKS 1510-089">PKS 1510-089</button>
+                <button class="quasar-chip" data-name="S5 0014+81">S5 0014+81</button>
+                <span style="color: var(--text-3); font-size:0.75rem; margin-left:0.5rem;">| CSV columns: Time, Brightness, Error, Filter</span>
+            </div>
+        </div>
+
+        <!-- Quasar Info Panel (shown after resolution) -->
+        <div class="hidden" id="quasarInfoPanel" style="margin-bottom: 1.5rem;">
+            <div class="metrics-row" id="quasarInfoGrid"></div>
         </div>
 
         <!-- Loading -->
         <div class="hidden" id="quasarLoading" style="text-align:center; padding: 3rem;">
             <div class="spinner" style="margin: 0 auto 1rem;"></div>
-            <p class="spinner-text">Running model inference across 3 architectures… This may take a moment.</p>
+            <p class="spinner-text" id="quasarLoadingText">Resolving quasar coordinates…</p>
+        </div>
+
+        <!-- Error -->
+        <div class="hidden" id="quasarError"
+            style="text-align:center; padding:2rem; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); border-radius:12px; margin-bottom:1.5rem;">
+            <p style="color:#ef4444; font-size:0.95rem;" id="quasarErrorText"></p>
         </div>
 
         <!-- Results with Tabs -->
@@ -137,6 +202,8 @@
             <div class="sf-tabs-nav" style="margin-bottom: 2rem;">
                 <button class="sf-tab-btn active" data-target="qw-tab-obs" onclick="switchQwTab(this)">📊
                     Observations</button>
+                <button class="sf-tab-btn" data-target="qw-tab-uat" onclick="switchQwTab(this)">🔭 UAT-CTGRU
+                    Forecast</button>
                 <button class="sf-tab-btn" data-target="qw-tab-forecast" onclick="switchQwTab(this)">📈 Forecast
                     Comparison</button>
                 <button class="sf-tab-btn" data-target="qw-tab-attn" onclick="switchQwTab(this)">🧠 Attention
@@ -157,7 +224,64 @@
                 </div>
             </div>
 
-            <!-- TAB 2: Forecast -->
+            <!-- TAB 2: UAT-CTGRU Forecast (NEW) -->
+            <div class="sf-tab-content" id="qw-tab-uat">
+
+                <!-- Empty state shown before a search is run -->
+                <div id="uatEmptyState" style="text-align:center; padding:4rem 2rem; color:var(--text-3);">
+                    <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="opacity:0.3; margin-bottom:1rem;">
+                        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <p style="font-size:0.95rem;">Search for a quasar by name or upload a CSV file to see the UAT-CTGRU forecast.</p>
+                </div>
+
+                <div id="uatContent" style="display:none;">
+                <div class="chart-container">
+                    <h3>🔭 1-Year Brightness Forecast — UAT-CTGRU</h3>
+                    <p class="chart-caption" style="margin-bottom:1rem; text-align:left;">
+                        Predicted quasar brightness over the next 365 days using the UAT-CTGRU model only.
+                        The shaded band is the 95% confidence interval (±1.96σ). Magnitude axis is reversed
+                        — lower values mean brighter.
+                    </p>
+                    <div class="chart-wrap"><canvas id="uatForecastChart" height="350"></canvas></div>
+                </div>
+
+                <div class="chart-container">
+                    <h3>🎯 Forecast Uncertainty Growth — UAT-CTGRU</h3>
+                    <p class="chart-caption" style="margin-bottom:1rem; text-align:left;">
+                        Predictive uncertainty (σ) grows with forecast horizon. Use this to plan follow-up
+                        observation windows before uncertainty becomes too large.
+                    </p>
+                    <div class="chart-wrap"><canvas id="uatUncertaintyChart" height="220"></canvas></div>
+                </div>
+
+                <!-- Forecast summary stats -->
+                <div class="metrics-row" id="uatForecastStats" style="margin-top:1.5rem;"></div>
+
+                <!-- Structure function -->
+                <div class="chart-container" style="margin-top:1.5rem;">
+                    <h3>📐 Historical Structure Function SF(τ)</h3>
+                    <p class="chart-caption" style="margin-bottom:1rem; text-align:left;">
+                        Log-log plot of mean squared magnitude difference vs time lag τ.
+                        A steeper slope indicates variability dominated by longer timescales (DRW-like);
+                        a flatter slope indicates rapid, intra-season variability.
+                    </p>
+                    <div class="chart-wrap"><canvas id="structureFunctionChart" height="250"></canvas></div>
+                </div>
+
+                <!-- Magnitude distribution -->
+                <div class="chart-container" style="margin-top:1.5rem;">
+                    <h3>📊 Historical Magnitude Distribution</h3>
+                    <p class="chart-caption" style="margin-bottom:1rem; text-align:left;">
+                        Histogram of observed magnitudes across all bands. A broad, asymmetric distribution
+                        suggests high intrinsic variability typical of blazar or high-accretion AGN activity.
+                    </p>
+                    <div class="chart-wrap"><canvas id="magHistChart" height="230"></canvas></div>
+                </div>
+                </div><!-- /uatContent -->
+            </div><!-- /qw-tab-uat -->
+
+            <!-- TAB 3: Forecast Comparison -->
             <div class="sf-tab-content" id="qw-tab-forecast">
                 <!-- Forecast plot -->
                 <div class="chart-container">
