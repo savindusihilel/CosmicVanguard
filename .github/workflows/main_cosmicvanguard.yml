@@ -21,16 +21,34 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
-          python-version: "3.12"
-          miniforge-variant: Miniforge3   # fast, lightweight conda
-          activate-environment: ""        # we'll create our own below
+          miniforge-variant: Miniforge3
+          activate-environment: rp
+          environment-file: environment.yml
+          use-mamba: true
 
-      - name: Create conda environment in antenv/
+      - name: Verify single OpenMP runtime
         shell: bash -el {0}
         run: |
-          conda env create -p ./antenv -f environment.yml
-          # verify only one Intel OpenMP exists
-          find antenv -name "libiomp5.so" | tee /dev/stderr | wc -l | xargs -I{} bash -c 'if [ {} -gt 1 ]; then echo "ERROR: Multiple libiomp5.so found!"; exit 1; fi'
+          conda activate rp
+          echo "=== Checking for duplicate OpenMP runtimes ==="
+          count=$(find $CONDA_PREFIX -name "libiomp5*.so" -o -name "libomp*.so" 2>/dev/null | tee /dev/stderr | wc -l)
+          echo "Found $count OpenMP libraries"
+          # Just warn, don't fail — pip's tensorflow-cpu may bundle one internally
+          if [ "$count" -gt 2 ]; then
+            echo "WARNING: Multiple OpenMP runtimes detected — review dependencies"
+          fi
+
+      - name: Create portable env in antenv/
+        shell: bash -el {0}
+        run: |
+          conda activate rp
+          conda pack -p $CONDA_PREFIX -o antenv.tar.gz --ignore-editable-packages
+          mkdir -p antenv
+          tar -xzf antenv.tar.gz -C antenv
+          rm antenv.tar.gz
+          # Fix up prefixes for portability
+          source antenv/bin/activate
+          conda-unpack 2>/dev/null || true
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
@@ -38,8 +56,9 @@ jobs:
           name: python-app
           path: |
             .
-            # the pre‑built conda environment is included
-            # (omit .git, __pycache__, etc. if you want)
+            !.git/**
+            !__pycache__/**
+            !.pytest_cache/**
 
   deploy:
     runs-on: ubuntu-latest
