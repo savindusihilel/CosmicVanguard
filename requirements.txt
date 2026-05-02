@@ -1,10 +1,14 @@
-fastapi
-uvicorn
+--extra-index-url https://download.pytorch.org/whl/cpu
+tensorflow-cpu
 torch
 numpy
 scikit-learn
 joblib
-nflows
-pydantic
 pandas
 scipy
+nflows
+fastapi
+uvicorn[standard]
+pydantic
+httpx
+python-multipart
