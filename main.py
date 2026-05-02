@@ -37,7 +37,6 @@ ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 GALAXY_ASSETS_DIR = os.path.join(ASSETS_DIR, "galaxy")
 TRANSIENT_ASSETS_DIR = os.path.join(ASSETS_DIR, "transient")
 QUASAR_ASSETS_DIR = os.path.join(ASSETS_DIR, "quasarwatch")
-STARFORGE_ASSETS_DIR = os.path.join(ASSETS_DIR, "starforge")
 # STARCHARACTERIZER START
 STARCHARACTERIZER_ASSETS_DIR = os.path.join(ASSETS_DIR, "StarCharacterizer")
 # Pre-load all SC artifacts ONCE at startup
@@ -233,16 +232,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"Failed to load TransientHunter models: {e}")
 
-    # Load StarForge models
-    try:
-        import tensorflow as tf
-        models["sf_encoder"] = tf.keras.models.load_model(os.path.join(STARFORGE_ASSETS_DIR, "joint_encoder.keras"))
-        models["sf_pop_model"] = tf.keras.models.load_model(os.path.join(STARFORGE_ASSETS_DIR, "joint_population_model.keras"))
-        models["sf_naive"] = tf.keras.models.load_model(os.path.join(STARFORGE_ASSETS_DIR, "naive_base_model.keras"))
-        models["sf_scaler"] = joblib.load(os.path.join(STARFORGE_ASSETS_DIR, "joint_scaler.pkl"))
-        print("StarForge models loaded.")
-    except Exception as e:
-        print(f"Failed to load StarForge models: {e}")
 
     print("Models loaded.")
 
@@ -276,10 +265,6 @@ async def read_galaxy():
 @app.get("/quasar")
 async def read_quasar():
     return FileResponse(os.path.join(STATIC_DIR, "quasar.html"))
-
-@app.get("/starforge")
-async def read_starforge():
-    return FileResponse(os.path.join(STATIC_DIR, "starforge.html"))
 
 @app.get("/transient")
 async def read_transient():
@@ -817,206 +802,6 @@ async def predict_basic_starcharacterizer(data: GalaxyInput):
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=str(e))
 # STARCHARACTERIZER END (predict_basic)
-
-
-# ======================
-# STARFORGE ENDPOINTS
-# ======================
-
-@app.post("/api/starforge/predict")
-async def predict_starforge(data: GalaxyInput):
-    try:
-        # Compute derived colors
-        u_g = data.u - data.g
-        r_i = data.r - data.i
-        i_z = data.i - data.z
-
-        # Standard input for models (9 features)
-        x = np.array([[data.u, data.g, data.r, data.i, data.z, data.redshift, u_g, r_i, i_z]], dtype=np.float32)
-        
-        if "sf_scaler" in models:
-            x_scaled = models["sf_scaler"].transform(x)
-        else:
-            x_scaled = x
-
-        # Baseline (Naive) prediction expects 5 inputs (u, g, r, i, z) based on original app
-        # Wait, the original `app.py` says `base_inputs = scaled_features[:, :5]`.
-        base_inputs = x_scaled[:, :5]
-        if "sf_naive" in models:
-            baseline_probs = models["sf_naive"].predict(base_inputs, verbose=0)[0]
-        else:
-            baseline_probs = np.array([0.33, 0.33, 0.34])
-            
-        baseline_probs = np.clip(baseline_probs, 0, None)
-        if np.sum(baseline_probs) > 0:
-            baseline_probs = baseline_probs / np.sum(baseline_probs)
-
-        # Research (Joint) prediction
-        if "sf_encoder" in models and "sf_pop_model" in models:
-            joint_output = models["sf_pop_model"].predict(x_scaled, verbose=0)
-            if isinstance(joint_output, list) and len(joint_output) == 2:
-                research_probs = joint_output[1][0]
-            else:
-                research_probs = joint_output[0] if joint_output.shape[-1] == 3 else joint_output[1][0]
-        else:
-            research_probs = baseline_probs + np.random.normal(0, 0.05, 3)
-            
-        research_probs = np.clip(research_probs, 0, None)
-        if np.sum(research_probs) > 0:
-            research_probs = research_probs / np.sum(research_probs)
-
-        return {
-            "labels": ["Young stars", "Intermediate stars", "Old stars"],
-            "baseline": (baseline_probs * 100).tolist(),
-            "research": (research_probs * 100).tolist(),
-            "derived": {
-                "u_g": u_g,
-                "r_i": r_i,
-                "i_z": i_z
-            }
-        }
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        from fastapi import HTTPException
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Lazy cache for Starforge validation dat
-sf_cache = {}
-
-def get_sf_validation_data():
-    if "df_sample" in sf_cache:
-        return sf_cache["df_sample"], sf_cache["pop_preds"], sf_cache["latent_2d"]
-        
-    import pandas as pd
-    from sklearn.decomposition import PCA
-    
-    df = pd.read_csv(os.path.join(STARFORGE_ASSETS_DIR, "processed_galaxies.csv"))
-    df_sample = df.sample(n=min(5000, len(df)), random_state=42).copy()
-    
-    features = df_sample[['u', 'g', 'r', 'i', 'z', 'redshift', 'u_g', 'r_i', 'i_z']].values
-    scaled_feat = models["sf_scaler"].transform(features)
-    
-    preds = models["sf_pop_model"].predict(scaled_feat, verbose=0)
-    if isinstance(preds, list):
-        pop_preds = preds[1]
-    else:
-        pop_preds = preds if preds.shape[-1] == 3 else preds[1]
-        
-    pop_preds = np.clip(pop_preds, 0, 1)
-    pop_preds = pop_preds / pop_preds.sum(axis=1, keepdims=True)
-    
-    latent_embeddings = models["sf_encoder"].predict(scaled_feat, verbose=0)
-    pca = PCA(n_components=2, random_state=42)
-    latent_2d = pca.fit_transform(latent_embeddings)
-    
-    sf_cache["df_sample"] = df_sample
-    sf_cache["pop_preds"] = pop_preds
-    sf_cache["latent_2d"] = latent_2d
-    
-    return df_sample, pop_preds, latent_2d
-
-@app.get("/api/starforge/validation/robustness")
-async def starforge_robustness():
-    try:
-        from fastapi import HTTPException
-        df_sample, pop_preds, _ = get_sf_validation_data()
-        
-        idx = np.random.choice(len(df_sample), min(1000, len(df_sample)), replace=False)
-        sub_redshifts = df_sample['redshift'].values[idx]
-        sub_preds = pop_preds[idx]
-        
-        np.random.seed(42)
-        noise = np.random.normal(0, 0.00248, sub_preds.shape)
-        true_pops = sub_preds + noise
-        true_pops = np.clip(true_pops, 0, 1)
-        true_pops = true_pops / true_pops.sum(axis=1, keepdims=True)
-        
-        mae_per_galaxy = np.mean(np.abs(sub_preds - true_pops), axis=1)
-        
-        return {
-            "redshifts": sub_redshifts.tolist(),
-            "maes": mae_per_galaxy.tolist(),
-            "global_mae": 0.00248
-        }
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/starforge/validation/transition")
-async def starforge_transition():
-    try:
-        from fastapi import HTTPException
-        from scipy.stats import entropy
-        df_sample, pop_preds, _ = get_sf_validation_data()
-        
-        entropies = [entropy(p, base=2) for p in pop_preds]
-        top_indices = np.argsort(entropies)[-5:][::-1]
-        
-        candidates = []
-        for i in top_indices:
-            candidates.append({
-                "galaxy_id": int(df_sample.iloc[i].name) if hasattr(df_sample.iloc[i], 'name') else int(i),
-                "entropy": float(entropies[i]),
-                "young": float(pop_preds[i, 0] * 100),
-                "inter": float(pop_preds[i, 1] * 100),
-                "old": float(pop_preds[i, 2] * 100)
-            })
-            
-        return {"candidates": candidates}
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/starforge/diagnostics/latent")
-async def starforge_latent():
-    try:
-        from fastapi import HTTPException
-        df_sample, pop_preds, latent_2d = get_sf_validation_data()
-        
-        data = []
-        # Sample to 2000 points to keep payload manageable for frontend scatter plot
-        limit = min(2000, len(df_sample))
-        for i in range(limit):
-            data.append({
-                "id": int(df_sample.iloc[i].name) if hasattr(df_sample.iloc[i], 'name') else int(i),
-                "x": float(latent_2d[i, 0]),
-                "y": float(latent_2d[i, 1]),
-                "young": float(pop_preds[i, 0]),
-                "inter": float(pop_preds[i, 1]),
-                "old": float(pop_preds[i, 2]),
-                "gr": float(df_sample.iloc[i]['g'] - df_sample.iloc[i]['r']),
-                "r": float(df_sample.iloc[i]['r'])
-            })
-            
-        return {"points": data}
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/starforge/diagnostics/cmd")
-async def starforge_cmd():
-    try:
-        from fastapi import HTTPException
-        df_sample, _, _ = get_sf_validation_data()
-        
-        # Sub-sample for CMD to avoid massive scatter plot overdraw on client side
-        limit = min(3000, len(df_sample))
-        gr = (df_sample['g'].iloc[:limit] - df_sample['r'].iloc[:limit]).tolist()
-        r = df_sample['r'].iloc[:limit].tolist()
-        
-        return {
-            "gr": gr,
-            "r": r
-        }
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 
 # ======================
