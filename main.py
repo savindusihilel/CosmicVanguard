@@ -109,19 +109,10 @@ async def lifespan(app: FastAPI):
     if os.path.exists(rf_s):
         models["rf_sfr"] = joblib.load(rf_s)
 
-    # Load demo datasets for validation/test comparison
-    demo_path = os.path.join(GALAXY_ASSETS_DIR, "demo_datasets.npz")
-    if os.path.exists(demo_path):
-        demo_data = np.load(demo_path)
-        models["demo"] = {
-            "X_val": demo_data["X_val"],
-            "yM_val": demo_data["yM_val"],
-            "yS_val": demo_data["yS_val"],
-            "X_test": demo_data["X_test"],
-            "yM_test": demo_data["yM_test"],
-            "yS_test": demo_data["yS_test"]
-        }
-        print("Demo datasets loaded.")
+    # Initialize SDSS live data client
+    from utils.sdss_client import SDSSClient
+    models["sdss_client"] = SDSSClient()
+    print("SDSS client initialized.")
 
     # Load Random Forest benchmark metrics
     rf_metrics_path = os.path.join(GALAXY_ASSETS_DIR, "rf_metrics.json")
@@ -130,47 +121,14 @@ async def lifespan(app: FastAPI):
             models["rf_metrics"] = json.load(f)
         print("RF metrics loaded.")
 
-    # Compute PINN metrics from demo validation set
-    if "demo" in models and "joint" in models and "scaler" in models:
-        try:
-            X_val = models["demo"]["X_val"]
-            yM_val = models["demo"]["yM_val"]
-            yS_val = models["demo"]["yS_val"]
+    # Load pre-computed PINN metrics from static JSON (if available)
+    pinn_metrics_path = os.path.join(GALAXY_ASSETS_DIR, "pinn_metrics.json")
+    if os.path.exists(pinn_metrics_path):
+        with open(pinn_metrics_path, "r") as f:
+            models["pinn_metrics"] = json.load(f)
+        print("PINN metrics loaded.")
 
-            X_val_scaled = models["scaler"].transform(X_val)
-            X_val_t = torch.tensor(X_val_scaled, dtype=torch.float32).to(DEVICE)
-
-            with torch.no_grad():
-                out = models["joint"](X_val_t)
-            pred_mass = out["mu_mass"].cpu().numpy().flatten()
-            pred_sfr = out["mu_sfr"].cpu().numpy().flatten()
-
-            from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-            models["pinn_metrics"] = {
-                "mass_metrics": {
-                    "rmse": float(np.sqrt(mean_squared_error(yM_val, pred_mass))),
-                    "mae": float(mean_absolute_error(yM_val, pred_mass)),
-                    "r2": float(r2_score(yM_val, pred_mass))
-                },
-                "sfr_metrics": {
-                    "rmse": float(np.sqrt(mean_squared_error(yS_val, pred_sfr))),
-                    "mae": float(mean_absolute_error(yS_val, pred_sfr)),
-                    "r2": float(r2_score(yS_val, pred_sfr))
-                }
-            }
-            print("PINN metrics computed.")
-        except Exception as e:
-            print(f"Failed to compute PINN metrics: {e}")
-
-    # Load SDSS main sequence data
-    ms_path = os.path.join(GALAXY_ASSETS_DIR, "main_sequence_data.npz")
-    if os.path.exists(ms_path):
-        ms_data = np.load(ms_path)
-        models["main_sequence"] = {
-            "mass": ms_data["mass"].tolist(),
-            "sfr": ms_data["sfr"].tolist()
-        }
-        print(f"Main sequence data loaded ({len(ms_data['mass'])} galaxies).")
+    # Main sequence data is now fetched live from SDSS via sdss_client
 
     # Load TransientHunter Models
     try:
@@ -293,40 +251,30 @@ async def get_training_loss():
     }
 
 
-@app.get("/api/galaxy/demo-galaxies")
+@app.get("/api/galaxy/demo-galaxies", deprecated=True)
 async def get_demo_galaxies(dataset: str = "val", n: int = 20):
-    if "demo" not in models:
-        return {"galaxies": []}
-
-    if dataset == "test":
-        X = models["demo"]["X_test"]
-        yM = models["demo"]["yM_test"]
-        yS = models["demo"]["yS_test"]
-    else:
-        X = models["demo"]["X_val"]
-        yM = models["demo"]["yM_val"]
-        yS = models["demo"]["yS_val"]
-
-    n = min(n, len(X))
-    galaxies = []
-
-    for i in range(n):
-        row = X[i]
-        galaxies.append({
-            "id": int(i),
-            "features": row.tolist(),
-            "true_mass": float(yM[i]),
-            "true_sfr": float(yS[i])
-        })
-
-    return {"galaxies": galaxies}
+    """Deprecated: Use /api/galaxy/sdss/random instead."""
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        content={
+            "galaxies": [],
+            "message": "This endpoint is deprecated. Use /api/galaxy/sdss/random for live SDSS galaxy data."
+        },
+        headers={"Deprecation": "true", "Link": "/api/galaxy/sdss/random"}
+    )
 
 
 @app.get("/api/galaxy/main-sequence")
 async def get_main_sequence():
-    if "main_sequence" not in models:
-        return {"mass": [], "sfr": []}
-    return models["main_sequence"]
+    """Main sequence data — fetched live from SDSS MPA-JHU catalog."""
+    if "sdss_client" in models:
+        try:
+            data = await models["sdss_client"].get_main_sequence()
+            if data["mass"]:
+                return data
+        except Exception as e:
+            print(f"SDSS main sequence fetch failed: {e}")
+    return {"mass": [], "sfr": []}
 
 
 @app.get("/api/galaxy/rf-metrics")
@@ -339,6 +287,89 @@ async def get_rf_metrics():
     if not result:
         return {"error": "No metrics loaded"}
     return result
+
+
+# ======================
+# SDSS LIVE DATA ENDPOINTS
+# ======================
+
+@app.get("/api/galaxy/sdss/search")
+async def sdss_search(query: str = ""):
+    """Search for a galaxy by SDSS objID or 'RA,Dec' coordinates."""
+    from fastapi import HTTPException
+
+    if not query or not query.strip():
+        raise HTTPException(status_code=400, detail="Provide an objID or 'RA,Dec' pair.")
+
+    if "sdss_client" not in models:
+        raise HTTPException(status_code=503, detail="SDSS client not initialized.")
+
+    try:
+        galaxy = await models["sdss_client"].search(query)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"SDSS query failed: {str(e)}")
+
+    if galaxy is None:
+        raise HTTPException(status_code=404, detail=f"No galaxy found for query '{query}'.")
+
+    return {"galaxy": galaxy}
+
+
+@app.get("/api/galaxy/sdss/random")
+async def sdss_random(n: int = 20, z_min: float = 0.01, z_max: float = 0.3):
+    """Fetch n random galaxies from SDSS DR18 within a redshift range."""
+    from fastapi import HTTPException
+
+    if "sdss_client" not in models:
+        raise HTTPException(status_code=503, detail="SDSS client not initialized.")
+
+    try:
+        galaxies = await models["sdss_client"].random(n, z_min, z_max)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"SDSS query failed: {str(e)}")
+
+    return {
+        "galaxies": galaxies,
+        "source": "SDSS DR18 Live",
+        "count": len(galaxies),
+    }
+
+
+@app.get("/api/galaxy/sdss/region")
+async def sdss_region(ra: float = 180.0, dec: float = 0.0, radius: float = 5.0):
+    """Cone search around RA/Dec within radius (arcmin, max 10)."""
+    from fastapi import HTTPException
+
+    if "sdss_client" not in models:
+        raise HTTPException(status_code=503, detail="SDSS client not initialized.")
+
+    try:
+        galaxies = await models["sdss_client"].cone_search(ra, dec, radius)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"SDSS query failed: {str(e)}")
+
+    return {
+        "galaxies": galaxies,
+        "source": "SDSS DR18 Live",
+        "count": len(galaxies),
+        "search": {"ra": ra, "dec": dec, "radius_arcmin": radius},
+    }
+
+
+@app.get("/api/galaxy/sdss/main-sequence")
+async def sdss_main_sequence():
+    """Live main sequence (mass vs SFR) from MPA-JHU catalog, cached 1h."""
+    from fastapi import HTTPException
+
+    if "sdss_client" not in models:
+        raise HTTPException(status_code=503, detail="SDSS client not initialized.")
+
+    try:
+        data = await models["sdss_client"].get_main_sequence()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"SDSS query failed: {str(e)}")
+
+    return data
 
 
 # ======================

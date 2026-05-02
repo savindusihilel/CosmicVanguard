@@ -16,6 +16,15 @@ Chart.defaults.font.size = 12;
 
 // ── Preset Loading Logic Removed ──
 
+// ── Reset truth data if user manually edits fields ──
+document.getElementById('predictForm').addEventListener('input', (e) => {
+    if (e.target.tagName === 'INPUT') {
+        window.trueMass = undefined;
+        window.trueSfr = undefined;
+        document.querySelectorAll('.sdss-galaxy-card').forEach(c => c.classList.remove('selected'));
+    }
+});
+
 // ── Form submission ──
 document.getElementById('predictForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -95,31 +104,41 @@ function displayResults(r) {
     document.getElementById('massUncertainty').textContent = `± ${r.mass_log_std.toFixed(2)}`;
     document.getElementById('sfrUncertainty').textContent = `± ${r.sfr_log_std.toFixed(2)}`;
 
-    // ── Truth comparison (demo galaxies only) ──
+    // ── Truth comparison (SDSS galaxies with MPA-JHU ground truth) ──
     const truthBar = document.getElementById('truthBar');
+    const truthGrid = document.getElementById('truthGrid');
+    const truthUnavail = document.getElementById('truthUnavailable');
     if (window.trueMass !== undefined && window.trueSfr !== undefined) {
         truthBar.classList.remove('hidden');
-        const massErr = Math.abs(window.trueMass - r.mass_log_mean);
-        const sfrErr = Math.abs(window.trueSfr - r.sfr_log_mean);
+        if (window.trueMass !== null && window.trueSfr !== null) {
+            // Ground truth available — show full comparison
+            if (truthGrid) truthGrid.classList.remove('hidden');
+            if (truthUnavail) truthUnavail.classList.add('hidden');
 
-        document.getElementById('trueMassVal').textContent = window.trueMass.toFixed(2);
-        document.getElementById('predMassVal').textContent = r.mass_log_mean.toFixed(2);
-        document.getElementById('trueSfrVal').textContent = window.trueSfr.toFixed(2);
-        document.getElementById('predSfrVal').textContent = r.sfr_log_mean.toFixed(2);
+            const massErr = Math.abs(window.trueMass - r.mass_log_mean);
+            const sfrErr = Math.abs(window.trueSfr - r.sfr_log_mean);
 
-        const massErrEl = document.getElementById('massErrVal');
-        massErrEl.textContent = `Δ${massErr.toFixed(3)}`;
-        massErrEl.className = 'truth-metric-err ' + (massErr < 0.1 ? 'good' : massErr < 0.3 ? 'warn' : 'bad');
+            document.getElementById('trueMassVal').textContent = window.trueMass.toFixed(2);
+            document.getElementById('predMassVal').textContent = r.mass_log_mean.toFixed(2);
+            document.getElementById('trueSfrVal').textContent = window.trueSfr.toFixed(2);
+            document.getElementById('predSfrVal').textContent = r.sfr_log_mean.toFixed(2);
 
-        const sfrErrEl = document.getElementById('sfrErrVal');
-        sfrErrEl.textContent = `Δ${sfrErr.toFixed(3)}`;
-        sfrErrEl.className = 'truth-metric-err ' + (sfrErr < 0.15 ? 'good' : sfrErr < 0.4 ? 'warn' : 'bad');
+            const massErrEl = document.getElementById('massErrVal');
+            massErrEl.textContent = `Δ${massErr.toFixed(3)}`;
+            massErrEl.className = 'truth-metric-err ' + (massErr < 0.1 ? 'good' : massErr < 0.3 ? 'warn' : 'bad');
 
-        // Clear after use so presets don't show truth bar
-        window.trueMass = undefined;
-        window.trueSfr = undefined;
+            const sfrErrEl = document.getElementById('sfrErrVal');
+            sfrErrEl.textContent = `Δ${sfrErr.toFixed(3)}`;
+            sfrErrEl.className = 'truth-metric-err ' + (sfrErr < 0.15 ? 'good' : sfrErr < 0.4 ? 'warn' : 'bad');
+        } else {
+            // No spectroscopic reference — hide stale grid, show message only
+            if (truthGrid) truthGrid.classList.add('hidden');
+            if (truthUnavail) truthUnavail.classList.remove('hidden');
+        }
     } else {
         truthBar.classList.add('hidden');
+        if (truthGrid) truthGrid.classList.remove('hidden');
+        if (truthUnavail) truthUnavail.classList.add('hidden');
     }
 
     // ── Quenching ──
@@ -306,6 +325,9 @@ window.addEventListener('resize', updateTabIndicator);
 // ══════════════════════
 async function renderEvolutionChart(mass, sfr) {
     const ctx = document.getElementById('evolutionChart');
+    const loadingEl = document.getElementById('evolutionLoading');
+    
+    if (loadingEl) loadingEl.classList.remove('hidden');
 
     // Fetch real SDSS main sequence data
     let mainSequence = [];
@@ -334,6 +356,7 @@ async function renderEvolutionChart(mass, sfr) {
         }
     }
 
+    if (loadingEl) loadingEl.classList.add('hidden');
     if (evolutionChart) evolutionChart.destroy();
 
     evolutionChart = new Chart(ctx, {
@@ -690,62 +713,155 @@ requestAnimationFrame(() => {
 });
 
 // ══════════════════════
-//  DEMO GALAXY LOADER
+//  SDSS LIVE EXPLORER
 // ══════════════════════
-let currentDemoDataset = 'test';
 
-async function loadDemoList(dataset) {
-    const selector = document.getElementById('demoSelector');
-    selector.innerHTML = '<option value="">Select a real galaxy…</option>';
-
-    try {
-        const res = await fetch(`/api/galaxy/demo-galaxies?dataset=${dataset}&n=50`);
-        const data = await res.json();
-
-        data.galaxies.forEach((g, index) => {
-            const opt = document.createElement('option');
-            opt.value = JSON.stringify(g);
-            opt.textContent = `Galaxy #${index + 1}  ·  logM = ${g.true_mass.toFixed(2)}  ·  logSFR = ${g.true_sfr.toFixed(2)}`;
-            selector.appendChild(opt);
-        });
-    } catch (err) {
-        console.warn('Demo galaxies unavailable:', err.message);
-    }
-}
-
-function loadDemoGalaxy(galaxyData) {
-    const g = typeof galaxyData === 'string' ? JSON.parse(galaxyData) : galaxyData;
-    const f = g.features;
-
-    document.getElementById('u').value = f[0].toFixed(4);
-    document.getElementById('g').value = f[1].toFixed(4);
-    document.getElementById('r').value = f[2].toFixed(4);
-    document.getElementById('i').value = f[3].toFixed(4);
-    document.getElementById('z').value = f[4].toFixed(4);
-    document.getElementById('redshift').value = f[9].toFixed(6);
-
-    // Store truth for comparison after prediction
-    window.trueMass = g.true_mass;
-    window.trueSfr = g.true_sfr;
-}
-
-// Demo toggle buttons
-document.querySelectorAll('.demo-toggle-btn').forEach(btn => {
+// ── Tab switching ──
+document.querySelectorAll('.sdss-tab').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('.demo-toggle-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.sdss-tab').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        currentDemoDataset = btn.dataset.dataset;
-        loadDemoList(currentDemoDataset);
+        document.querySelectorAll('.sdss-panel').forEach(p => p.classList.remove('active'));
+        const panel = document.getElementById('sdss' + btn.dataset.sdssTab.charAt(0).toUpperCase() + btn.dataset.sdssTab.slice(1));
+        if (panel) panel.classList.add('active');
     });
 });
 
-// Auto-load galaxy when selected from dropdown
-document.getElementById('demoSelector').addEventListener('change', (e) => {
-    if (e.target.value) {
-        loadDemoGalaxy(e.target.value);
+// ── SDSS loading / error helpers ──
+function sdssSetLoading(show) {
+    const el = document.getElementById('sdssLoading');
+    if (show) el.classList.remove('hidden');
+    else el.classList.add('hidden');
+    document.querySelectorAll('.sdss-btn').forEach(b => b.disabled = show);
+}
+
+function sdssShowError(msg) {
+    const el = document.getElementById('sdssError');
+    document.getElementById('sdssErrorText').textContent = msg;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 6000);
+}
+
+// ── Render galaxy cards ──
+function sdssRenderResults(galaxies) {
+    const wrap = document.getElementById('sdssResultsWrap');
+    const list = document.getElementById('sdssResultsList');
+    const countEl = document.getElementById('sdssResultCount');
+
+    list.innerHTML = '';
+    if (!galaxies || galaxies.length === 0) {
+        wrap.style.display = 'none';
+        return;
     }
+    wrap.style.display = '';
+    countEl.textContent = `${galaxies.length} galax${galaxies.length === 1 ? 'y' : 'ies'}`;
+
+    galaxies.forEach((g, idx) => {
+        const card = document.createElement('div');
+        card.className = 'sdss-galaxy-card';
+        const cutoutUrl = `https://skyserver.sdss.org/dr18/SkyserverWS/ImgCutout/getjpeg?ra=${g.ra}&dec=${g.dec}&width=80&height=80&scale=0.2`;
+        const massText = g.true_mass != null ? `logM=${g.true_mass.toFixed(2)}` : 'logM=—';
+        const sfrText = g.true_sfr != null ? `SFR=${g.true_sfr.toFixed(2)}` : 'SFR=—';
+        card.innerHTML = `
+            <img class="sdss-card-thumb" src="${cutoutUrl}" alt="Galaxy cutout" loading="lazy" onerror="this.style.display='none'">
+            <div class="sdss-card-info">
+                <div class="sdss-card-id">${g.objID}</div>
+                <div class="sdss-card-meta">z=${g.redshift.toFixed(4)} · ${massText} · ${sfrText}</div>
+            </div>
+            <button type="button" class="sdss-card-select" title="Select this galaxy">▶</button>
+        `;
+        card.querySelector('.sdss-card-select').addEventListener('click', () => sdssSelectGalaxy(g));
+        card.addEventListener('dblclick', () => sdssSelectGalaxy(g));
+        list.appendChild(card);
+    });
+}
+
+// ── Select a galaxy → populate form ──
+function sdssSelectGalaxy(g) {
+    document.getElementById('u').value = g.u.toFixed(4);
+    document.getElementById('g').value = g.g.toFixed(4);
+    document.getElementById('r').value = g.r.toFixed(4);
+    document.getElementById('i').value = g.i.toFixed(4);
+    document.getElementById('z').value = g.z_mag.toFixed(4);
+    document.getElementById('redshift').value = g.redshift.toFixed(6);
+
+    // Store ground truth (may be null)
+    window.trueMass = g.true_mass;
+    window.trueSfr = g.true_sfr;
+    window.sdssSource = g.source || 'SDSS DR18';
+
+    // Highlight selected card
+    document.querySelectorAll('.sdss-galaxy-card').forEach(c => c.classList.remove('selected'));
+    event && event.target && event.target.closest('.sdss-galaxy-card')?.classList.add('selected');
+}
+
+// ── Search ──
+async function sdssDoSearch() {
+    const query = document.getElementById('sdssQuery').value.trim();
+    if (!query) return;
+    sdssSetLoading(true);
+    try {
+        const res = await fetch(`/api/galaxy/sdss/search?query=${encodeURIComponent(query)}`);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        sdssRenderResults(data.galaxy ? [data.galaxy] : []);
+    } catch (err) {
+        sdssShowError(err.message);
+    } finally {
+        sdssSetLoading(false);
+    }
+}
+
+// ── Random ──
+async function sdssLoadRandom() {
+    const n = document.getElementById('sdssRandomN').value;
+    const zMin = document.getElementById('sdssZMin').value;
+    const zMax = document.getElementById('sdssZMax').value;
+    sdssSetLoading(true);
+    try {
+        const res = await fetch(`/api/galaxy/sdss/random?n=${n}&z_min=${zMin}&z_max=${zMax}`);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        sdssRenderResults(data.galaxies || []);
+    } catch (err) {
+        sdssShowError(err.message);
+    } finally {
+        sdssSetLoading(false);
+    }
+}
+
+// ── Region ──
+async function sdssSearchRegion() {
+    const ra = document.getElementById('sdssRA').value;
+    const dec = document.getElementById('sdssDec').value;
+    const radius = document.getElementById('sdssRadius').value;
+    if (!ra || !dec) { sdssShowError('Enter RA and Dec coordinates.'); return; }
+    sdssSetLoading(true);
+    try {
+        const res = await fetch(`/api/galaxy/sdss/region?ra=${ra}&dec=${dec}&radius=${radius}`);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        sdssRenderResults(data.galaxies || []);
+    } catch (err) {
+        sdssShowError(err.message);
+    } finally {
+        sdssSetLoading(false);
+    }
+}
+
+// Enter key triggers search
+document.getElementById('sdssQuery')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); sdssDoSearch(); }
 });
 
-// Load data on startup
-loadDemoList(currentDemoDataset);
+// ── Init ──
 loadRFMetrics();
