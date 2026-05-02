@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TransientHunter — Cosmic Vanguard</title>
+    <meta name="description"
+        content="Classify astronomical transients from photometric time series using supervised contrastive learning.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="cv-nav scrolled" id="mainNav">
+        <div class="nav-inner">
+            <a href="/" class="nav-brand">
+                <span class="brand-icon">◆</span>
+                Cosmic<span class="brand-accent">Vanguard</span>
+            </a>
+            <div class="nav-links">
+                <a href="/galaxy" class="nav-link">GalaxyPlayground</a>
+                <a href="/quasar" class="nav-link">QuasarWatch</a>
+                <a href="/starforge" class="nav-link">StarForge</a>
+                <a href="/starcharacterizer" class="nav-link">StarCharacterizer</a>
+                <a href="/transient" class="nav-link active">TransientHunter</a>
+                <a href="/contact" class="nav-link nav-link-cta">Apply for Grant</a>
+            </div>
+            <button class="nav-toggle" id="navToggle" aria-label="Menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="app-container transient-page" style="padding-top: 5rem; max-width: 1200px; margin: 0 auto;">
+        <header style="text-align: center; margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.5rem;">
+                <span style="font-size: 2.5rem; color: #38bdf8;">☄️</span>
+                <h1 style="font-size: 2.8rem; font-weight: 800; color: #38bdf8; margin: 0;">Astronomical Transient
+                    Classifier</h1>
+            </div>
+        </header>
+
+        <!-- Status Banner -->
+        <div id="statusBanner"
+            style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 0.75rem 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 0.75rem;">
+            <span style="color: #10b981;">✅</span>
+            <div style="display: flex; flex-direction: column;">
+                <span id="appStatusTitle" style="color: #e2e8f0; font-weight: 600; font-size: 0.9rem;">Models loaded
+                    successfully!</span>
+            </div>
+        </div>
+
+        <main>
+            <!-- Secondary Navigation Removed: Single view now -->
+
+            <!-- Tab Content: Predictions -->
+            <div id="tab-predict" class="tab-content active">
+                <div class="card" style="padding: 2.5rem; margin-bottom: 2rem;">
+                    <h2
+                        style="font-size: 1.6rem; display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                        <span>🔮</span> Single Light Curve Prediction
+                    </h2>
+                    <hr style="border: none; border-top: 1px solid var(--border-subtle); margin-bottom: 1.5rem;">
+
+
+
+                    <div style="margin-bottom: 2rem;">
+                        <span
+                            style="font-weight: 500; font-size: 0.85rem; color: var(--text-3); display: block; margin-bottom: 1rem;">Choose
+                            input method:</span>
+                        <div
+                            style="display: flex; gap: 1.5rem; background: rgba(15, 23, 42, 0.4); padding: 0.75rem 1.5rem; border-radius: 10px; border: 1px solid var(--border-subtle); width: fit-content;">
+                            <label class="nav-radio-label">
+                                <input type="radio" name="input-method" value="json" checked>
+                                <span>JSON Payload (API Format)</span>
+                            </label>
+                            <label class="nav-radio-label">
+                                <input type="radio" name="input-method" value="manual">
+                                <span>Manual Entry</span>
+                            </label>
+                            <!-- <label class="nav-radio-label">
+                                <input type="radio" name="input-method" value="csv">
+                                <span>Upload CSV</span>
+                            </label> -->
+                        </div>
+                    </div>
+
+                    <!-- Input Areas -->
+                    <div id="json-input-section" style="margin-bottom: 2rem;">
+                        <h3
+                            style="font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.0rem;">
+                            <span>📝</span> Enter JSON Payload
+                        </h3>
+                        <p style="color: var(--text-3); font-size: 0.85rem; margin-bottom: 1rem;">Paste a JSON payload
+                            matching the API request format.</p>
+
+                        <label
+                            style="font-size: 0.75rem; color: var(--text-3); margin-bottom: 0.5rem; display: block;">JSON
+                            Request Payload</label>
+                        <textarea id="jsonPayload"
+                            style="width: 100%; height: 250px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-subtle); border-radius: 8px; color: #e2e8f0; font-family: var(--mono); padding: 1rem; resize: vertical; font-size: 0.85rem;">{
+    "object_id": "TEST_SNIA_001",
+    "observations": [
+        {"time": 58000.0, "magnitude": 19.5, "error": 0.05, "band": "g"},
+        {"time": 58001.0, "magnitude": 19.2, "error": 0.04, "band": "g"},
+        {"time": 58002.0, "magnitude": 18.8, "error": 0.03, "band": "g"},
+        {"time": 58003.0, "magnitude": 18.2, "error": 0.03, "band": "g"},
+        {"time": 58004.0, "magnitude": 17.8, "error": 0.03, "band": "g"},
+        {"time": 58005.0, "magnitude": 17.5, "error": 0.03, "band": "g"},
+        {"time": 58006.0, "magnitude": 17.3, "error": 0.03, "band": "g"},
+        {"time": 58007.0, "magnitude": 17.2, "error": 0.03, "band": "g"},
+        {"time": 58008.0, "magnitude": 17.1, "error": 0.03, "band": "g"},
+        {"time": 58009.0, "magnitude": 17.2, "error": 0.03, "band": "g"},
+        {"time": 58010.0, "magnitude": 17.4, "error": 0.03, "band": "g"},
+        {"time": 58011.0, "magnitude": 17.7, "error": 0.03, "band": "g"},
+        {"time": 58012.0, "magnitude": 18.1, "error": 0.03, "band": "g"},
+        {"time": 58013.0, "magnitude": 18.5, "error": 0.04, "band": "g"},
+        {"time": 58014.0, "magnitude": 18.9, "error": 0.04, "band": "g"},
+        {"time": 58015.0, "magnitude": 19.3, "error": 0.05, "band": "g"},
+        {"time": 58000.0, "magnitude": 19.6, "error": 0.05, "band": "r"},
+        {"time": 58001.0, "magnitude": 19.3, "error": 0.04, "band": "r"},
+        {"time": 58002.0, "magnitude": 18.9, "error": 0.03, "band": "r"},
+        {"time": 58003.0, "magnitude": 18.3, "error": 0.03, "band": "r"},
+        {"time": 58004.0, "magnitude": 17.9, "error": 0.03, "band": "r"},
+        {"time": 58005.0, "magnitude": 17.6, "error": 0.03, "band": "r"},
+        {"time": 58006.0, "magnitude": 17.4, "error": 0.03, "band": "r"},
+        {"time": 58007.0, "magnitude": 17.3, "error": 0.03, "band": "r"},
+        {"time": 58008.0, "magnitude": 17.2, "error": 0.03, "band": "r"},
+        {"time": 58009.0, "magnitude": 17.3, "error": 0.03, "band": "r"},
+        {"time": 58010.0, "magnitude": 17.5, "error": 0.03, "band": "r"},
+        {"time": 58011.0, "magnitude": 17.8, "error": 0.03, "band": "r"},
+        {"time": 58012.0, "magnitude": 18.2, "error": 0.04, "band": "r"},
+        {"time": 58013.0, "magnitude": 18.6, "error": 0.04, "band": "r"},
+        {"time": 58014.0, "magnitude": 19.0, "error": 0.05, "band": "r"},
+        {"time": 58015.0, "magnitude": 19.4, "error": 0.05, "band": "r"}
+    ]
+}</textarea>
+                    </div>
+
+                    <div id="manual-input-section" class="hidden" style="margin-bottom: 2rem;">
+                        <h3
+                            style="font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <span>📝</span> Enter Observations
+                        </h3>
+                        <p style="color: var(--text-3); font-size: 0.85rem; margin-bottom: 1.5rem;">Add multiple
+                            observations. Each observation represents a brightness measurement at a specific time.</p>
+
+                        <div style="margin-bottom: 2rem; max-width: 400px;">
+                            <label
+                                style="font-size: 0.75rem; color: var(--text-3); display: block; margin-bottom: 0.5rem;">Number
+                                of observations: 10 (Static Preloaded)</label>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
+                            <!-- Observation Details (Left) -->
+                            <div id="observation-details-col">
+                                <h4
+                                    style="font-size: 0.9rem; font-weight: 600; color: var(--text-1); margin-bottom: 1.5rem; text-transform: uppercase;">
+                                    Observation Details</h4>
+                                <div id="observations-container"
+                                    style="display: flex; flex-direction: column; gap: 1.5rem;">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+
+                            <!-- Preview Data (Right) -->
+                            <div id="preview-data-col">
+                                <h4
+                                    style="font-size: 0.9rem; font-weight: 600; color: var(--text-1); margin-bottom: 1.5rem; text-transform: uppercase;">
+                                    Preview Data</h4>
+                                <div
+                                    style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-subtle); border-radius: 8px; overflow: hidden;">
+                                    <table id="preview-table" class="cv-table" style="width: 100%; font-size: 0.8rem;">
+                                        <thead>
+                                            <tr>
+                                                <th style="padding: 0.5rem;">Time</th>
+                                                <th style="padding: 0.5rem;">Magnitude</th>
+                                                <th style="padding: 0.5rem;">Error</th>
+                                                <th style="padding: 0.5rem;">Band</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Populated by JS -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="csv-input-section" class="hidden" style="margin-bottom: 2rem;">
+                        <h3
+                            style="font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                            <span>📊</span> Upload CSV File
+                        </h3>
+                        <div
+                            style="padding: 2rem; border: 2px dashed var(--border-subtle); border-radius: 12px; text-align: center;">
+                            <p style="color: var(--text-3); margin-bottom: 1.5rem;">Upload a CSV with columns:
+                                object_id, time, magnitude, error, band.</p>
+                            <button class="btn-secondary"
+                                onclick="document.getElementById('batchCsvInput').click()">Choose CSV File</button>
+                            <input type="file" id="batchCsvInput" accept=".csv" style="display: none;">
+                            <div id="fileNameDisplay" style="margin-top: 1rem; color: var(--accent); font-weight: 600;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 2rem;">
+                        <button class="btn-preset" id="predictBothBtn"
+                            style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-subtle); border-radius: 8px; color: white; width: 100%; justify-content: center; font-size: 1.1rem; font-weight: 600;">
+                            <span>✨</span> Run Predict (Both Models)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Prediction Results Wrapper -->
+                <div id="singleResults" class="hidden" style="display: flex; flex-direction: column; gap: 2rem;">
+
+                    <!-- 1. Single Results: Side by Side Models -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <!-- Contrastive Column -->
+                        <div class="result-column card" style="padding: 2rem; margin: 0;">
+                            <div style="background: #38bdf8; height: 12px; border-radius: 6px; margin-bottom: 1.5rem;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2rem;">
+                                <span style="font-size: 1.4rem;">🎯</span>
+                                <h3 style="margin: 0; font-size: 1.4rem; color: #e2e8f0; font-weight: 700;">Prediction
+                                    Result (Contrastive Model)</h3>
+                            </div>
+
+                            <div
+                                style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 2.5rem;">
+                                <div>
+                                    <label
+                                        style="display: block; font-size: 0.7rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem;">Predicted
+                                        Class</label>
+                                    <div id="contrastiveTopClass"
+                                        style="font-size: 2rem; font-weight: 400; color: #e2e8f0;">--</div>
+                                </div>
+                                <div>
+                                    <label
+                                        style="display: block; font-size: 0.7rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem;">Confidence</label>
+                                    <div id="contrastiveConf"
+                                        style="font-size: 2rem; font-weight: 400; color: #e2e8f0;">
+                                        --%</div>
+                                </div>
+                                <div>
+                                    <label
+                                        style="display: block; font-size: 0.7rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem;">Object
+                                        ID</label>
+                                    <div id="contrastiveOid"
+                                        style="font-size: 1.6rem; font-weight: 400; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        --</div>
+                                </div>
+                            </div>
+
+                            <h4
+                                style="font-size: 1rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <span>📊</span> Probability Distribution
+                            </h4>
+                            <div
+                                style="height: 350px; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.5rem;">
+                                <canvas id="probsChartContrastive"></canvas>
+                            </div>
+
+                            <!-- Alerts -->
+                            <div id="contrastiveAlert" class="hidden"
+                                style="margin-top: 1.5rem; padding: 1.25rem; border-radius: 8px; display: flex; align-items: start; gap: 0.75rem;">
+                                <!-- Dynamic icon/message -->
+                            </div>
+                        </div>
+
+                        <!-- Autoencoder Column -->
+                        <div class="result-column card" style="padding: 2rem; margin: 0;">
+                            <div style="background: #38bdf8; height: 12px; border-radius: 6px; margin-bottom: 1.5rem;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2rem;">
+                                <span style="font-size: 1.4rem;">🎯</span>
+                                <h3 style="margin: 0; font-size: 1.4rem; color: #e2e8f0; font-weight: 700;">Prediction
+                                    Result (Autoencoder Model)</h3>
+                            </div>
+
+                            <div
+                                style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 2.5rem;">
+                                <div>
+                                    <label
+                                        style="display: block; font-size: 0.7rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem;">Predicted
+                                        Class</label>
+                                    <div id="aeTopClass" style="font-size: 2rem; font-weight: 400; color: #e2e8f0;">--
+                                    </div>
+                                </div>
+                                <div>
+                                    <label
+                                        style="display: block; font-size: 0.7rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem;">Confidence</label>
+                                    <div id="aeConf" style="font-size: 2rem; font-weight: 400; color: #e2e8f0;">--%
+                                    </div>
+                                </div>
+                                <div>
+                                    <label
+                                        style="display: block; font-size: 0.7rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem;">Object
+                                        ID</label>
+                                    <div id="aeOid"
+                                        style="font-size: 1.6rem; font-weight: 400; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        --</div>
+                                </div>
+                            </div>
+
+                            <h4
+                                style="font-size: 1rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <span>📊</span> Probability Distribution
+                            </h4>
+                            <div
+                                style="height: 350px; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 1.5rem;">
+                                <canvas id="probsChartAe"></canvas>
+                            </div>
+
+                            <!-- Alerts -->
+                            <div id="aeAlert" class="hidden"
+                                style="margin-top: 1.5rem; padding: 1.25rem; border-radius: 8px; display: flex; align-items: start; gap: 0.75rem;">
+                                <!-- Dynamic icon/message -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Light Curve Visualization -->
+                    <div class="card" style="padding: 2.5rem; border-top: 5px solid #8b5cf6;">
+                        <div
+                            style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <span style="font-size: 1.6rem;">📈</span>
+                                <h3 style="margin: 0; font-size: 1.5rem; color: #e2e8f0; font-weight: 700;">
+                                    Photometric Time Series Visualization</h3>
+                            </div>
+                            <span
+                                style="background: rgba(139, 92, 246, 0.1); padding: 0.5rem 1.5rem; border-radius: 20px; font-size: 0.85rem; border: 1px solid rgba(139, 92, 246, 0.3); color: #c4b5fd; font-weight: 500;"
+                                id="visualOidLabel">Object ID: --</span>
+                        </div>
+                        <p style="color: var(--text-2); font-size: 0.95rem; margin-bottom: 2rem; line-height: 1.6;">
+                            This plot visualizes the light curve sequence of the transient object. The
+                            <strong>Y-axis is inverted</strong> so that apparent brightness increases upwards,
+                            following astronomical conventions. Different colors represent distinct filter bands.
+                            Hovering over data points reveals precise magnitude values.
+                        </p>
+                        <div
+                            style="background: rgba(0,0,0,0.3); border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border-subtle);">
+                            <div style="height: 400px;">
+                                <canvas id="lightCurveChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Supplemental Data Visualizations -->
+                    <div class="card" style="padding: 2.5rem; border-top: 5px solid #06b6d4;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                            <span style="font-size: 1.6rem;">📊</span>
+                            <h3 style="margin: 0; font-size: 1.5rem; color: #e2e8f0; font-weight: 700;">Observation
+                                Distribution Analytics</h3>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                            <div>
+                                <h4
+                                    style="color: var(--text-2); font-size: 0.95rem; margin-bottom: 1rem; text-align: center;">
+                                    Filter Band Coverage</h4>
+                                <div
+                                    style="height: 300px; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 1.5rem;">
+                                    <canvas id="filterBandChart"></canvas>
+                                </div>
+                            </div>
+                            <div>
+                                <h4
+                                    style="color: var(--text-2); font-size: 0.95rem; margin-bottom: 1rem; text-align: center;">
+                                    Magnitude vs Error Correlation</h4>
+                                <div
+                                    style="height: 300px; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 1.5rem;">
+                                    <canvas id="magErrorChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Extra Styles for Radio Nav -->
+    <style>
+        .tab-content {
+            display: none;
+            width: 100%;
+            transition: opacity 0.3s;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .nav-radio-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-radio-label input[type="radio"] {
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #94a3b8;
+            border-radius: 50%;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .nav-radio-label input[type="radio"]:checked {
+            border-color: #38bdf8;
+        }
+
+        .nav-radio-label input[type="radio"]:checked::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #38bdf8;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .nav-radio-label span {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .nav-radio-label input[type="radio"]:checked+span {
+            color: #e2e8f0;
+        }
+
+        .btn-preset,
+        .sample-pill {
+            font-size: 0.8rem;
+            padding: 0.4rem 0.8rem;
+            background: rgba(14, 165, 233, 0.1);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 20px;
+            color: #bae6fd;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .sample-pill:hover {
+            background: rgba(14, 165, 233, 0.25);
+            border-color: #38bdf8;
+            transform: translateY(-2px);
+        }
+
+        .cv-table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .cv-table th {
+            padding: 1rem;
+            text-align: left;
+            color: var(--text-3);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .cv-table td {
+            padding: 1rem;
+            color: var(--text-1);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 0.9rem;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .display-flex {
+            display: flex !important;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: #e2e8f0;
+        }
+
+        .alert-warning {
+            background: rgba(234, 179, 8, 0.1);
+            border: 1px solid rgba(234, 179, 8, 0.2);
+            color: #e2e8f0;
+        }
+    </style>
+
+    <script src="/static/transient.js?v=4"></script>
+    <script>
+        const navToggle = document.getElementById('navToggle');
+        const navLinks = document.querySelector('.nav-links');
+        if (navToggle) navToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('open');
+            navToggle.classList.toggle('open');
+        });
+    </script>
+</body>
+
+</html>
