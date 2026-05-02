@@ -656,3 +656,39 @@
     margin-bottom: 1rem;
 }
 
+
+/* ═══════════════════════════════════════════════════════
+   CONFERENCE ADDITIONS — Comparison / Invariance / Toggle
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Toggle Switch ─────────────────────────────────────── */
+.sc-toggle { position:relative; display:inline-block; width:44px; height:22px; flex-shrink:0; }
+.sc-toggle input { opacity:0; width:0; height:0; }
+.sc-toggle-slider { position:absolute; cursor:pointer; inset:0; background:#374151; border-radius:22px; transition:0.3s; }
+.sc-toggle-slider:before { content:''; position:absolute; height:16px; width:16px; left:3px; bottom:3px; background:white; border-radius:50%; transition:0.3s; }
+.sc-toggle input:checked + .sc-toggle-slider { background:#6366f1; }
+.sc-toggle input:checked + .sc-toggle-slider:before { transform:translateX(22px); }
+
+/* ── Comparison Tab ────────────────────────────────────── */
+.comp-toggle-row { display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+.comp-mode-lbl { font-size:0.71rem; color:var(--text-2); }
+.comp-mode-lbl.muted { color:var(--text-3); }
+.baseline-warn { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; padding:10px 14px; border-radius:8px; font-size:0.70rem; margin-bottom:12px; line-height:1.5; }
+.r2-three-way { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px; }
+.r2-card { border-radius:10px; padding:14px 12px; text-align:center; }
+.r2-card.loss { background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.22); }
+.r2-card.ref  { background:rgba(251,191,36,0.07); border:1px solid rgba(251,191,36,0.22); }
+.r2-card.win  { background:rgba(52,211,153,0.08); border:1px solid rgba(52,211,153,0.35); }
+.r2-model    { font-size:0.72rem; font-weight:700; color:var(--text-2); }
+.r2-subtitle { font-size:0.62rem; color:var(--text-3); margin-bottom:8px; }
+.r2-big      { font-size:1.5rem; font-weight:700; font-family:'JetBrains Mono',monospace; }
+.r2-card.loss .r2-big { color:#f87171; }
+.r2-card.ref  .r2-big { color:#fbbf24; }
+.r2-card.win  .r2-big { color:#34d399; }
+.r2-unit { font-size:0.62rem; color:var(--text-3); }
+.r2-mae  { font-size:0.68rem; color:var(--text-3); margin-top:6px; }
+.r2-delta-line { font-size:0.71rem; color:var(--text-3); text-align:center; margin-bottom:16px; line-height:1.55; padding:8px 12px; background:rgba(52,211,153,0.05); border-radius:8px; border:1px solid rgba(52,211,153,0.15); }
+.r2-delta-line strong { color:var(--text-2); }
+
+/* ── Invariance Panel ──────────────────────────────────── */
+.invariance-panel { background:var(--surface-2,rgba(255,255,255,0.04)); border-radius:10px; padding:16px; border:1px solid rgba(139,92,246,0.18); }
