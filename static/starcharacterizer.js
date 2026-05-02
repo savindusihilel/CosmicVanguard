@@ -131,23 +131,10 @@ function displayResults(r, baseline, inputs) {
     document.getElementById('emptyState').classList.add('hidden');
     document.getElementById('resultsContent').classList.remove('hidden');
 
-    // Tab 1 — Interpretation
-    // Update chips with backend-computed absolute colour indices
-    if (r.derived) {
-        document.getElementById('chip_ug').textContent = r.derived.u_g.toFixed(2);
-        document.getElementById('chip_ri').textContent = r.derived.r_i.toFixed(2);
-        document.getElementById('chip_iz').textContent = r.derived.i_z.toFixed(2);
-        // Update chip labels to reflect absolute values
-        const chipLabels = document.querySelectorAll('.sc-chip-label');
-        if (chipLabels[0]) chipLabels[0].textContent = 'U−G (abs)';
-        if (chipLabels[1]) chipLabels[1].textContent = 'R−I (abs)';
-        if (chipLabels[2]) chipLabels[2].textContent = 'I−Z (abs)';
-    }
-    renderDominantCard(r);
+    // Tab 1 — ETI gauge + state badge + fraction bars
+    renderETI(r);
     renderPopBars('gmmBars', r.labels, r.gmm_fractions);
     renderPopBars('mlpBars', r.labels, r.mlp_fractions);
-    renderEntropyBar(r);
-    renderPlainSummary(r);
     document.getElementById('sc-agreement-val').textContent  = r.agreement_pct.toFixed(1) + '%';
     document.getElementById('sc-certainty-chip').textContent = r.certainty_pct.toFixed(1) + '%';
 
@@ -167,6 +154,68 @@ function displayResults(r, baseline, inputs) {
 // ══════════════════════════
 //  TAB 1 RENDERS
 // ══════════════════════════
+const ETI_STATES = {
+    stable:      { label: 'STABLE',       cls: 'eti-stable',      maxH: 0.35 },
+    mixed:       { label: 'MIXED',        cls: 'eti-mixed',       maxH: 0.55 },
+    greenValley: { label: 'GREEN VALLEY', cls: 'eti-green-valley',maxH: 0.65 },
+    transitional:{ label: 'TRANSITIONAL', cls: 'eti-transitional',maxH: Infinity }
+};
+
+const ETI_DESCS = {
+    stable: 'Low entropy confirms a dominant single stellar population. This galaxy sits firmly in the Blue Cloud or Red Sequence.',
+    mixed: 'Moderate entropy — coexisting stellar populations at varying evolutionary stages. Colours sit between Blue Cloud and Red Sequence.',
+    greenValley: 'Mixed stellar populations with elevated intermediate fraction — this galaxy occupies the Green Valley. Quenching is in progress on a ~1–2 Gyr timescale.',
+    transitional: 'High entropy confirms active population transition. This galaxy is caught mid-quench in the Green Valley. The distributed probability mass is physically real — a hard-label classifier would collapse this to a single population, losing the research signal.'
+};
+
+const ARC_LEN = 189; // total arc length for the semicircle (M14,74 A60,60 0 0,1 126,74)
+
+function getETIState(H, mlp_fracs) {
+    const intermediateFrac = mlp_fracs[1] || 0;
+    if (H < 0.35) return 'stable';
+    if (H < 0.55) return 'mixed';
+    if (H < 0.65) return (intermediateFrac > 15) ? 'greenValley' : 'mixed';
+    return 'transitional';
+}
+
+function renderETI(r) {
+    const H     = r.entropy;
+    const ETI   = Math.min(H / Math.log(3) * 100, 100);
+    const state = getETIState(H, r.mlp_fractions);
+    const cfg   = ETI_STATES[state] || ETI_STATES.transitional;
+
+    // Arc gauge colours
+    const arcColors = { stable:'#34d399', mixed:'#60a5fa', greenValley:'#10b981', transitional:'#fbbf24' };
+    const arcColor  = arcColors[state];
+
+    // Update SVG arc via stroke-dasharray
+    const arcEl = document.getElementById('sc-eti-arc');
+    const filled = (ETI / 100) * ARC_LEN;
+    if (arcEl) {
+        arcEl.style.transition = 'stroke-dasharray 0.9s cubic-bezier(.4,0,.2,1)';
+        arcEl.setAttribute('stroke-dasharray', `${filled} ${ARC_LEN - filled}`);
+        arcEl.setAttribute('stroke', arcColor);
+    }
+
+    const pctEl = document.getElementById('sc-eti-pct');
+    if (pctEl) { pctEl.textContent = ETI.toFixed(1) + '%'; pctEl.setAttribute('fill', arcColor); }
+
+    // State badge
+    const badge = document.getElementById('sc-state-badge');
+    if (badge) {
+        badge.textContent  = cfg.label;
+        badge.className    = 'sc-state-badge ' + cfg.cls;
+    }
+
+    // H readout
+    const hEl = document.getElementById('sc-h-readout');
+    if (hEl) hEl.textContent = `H = ${H.toFixed(3)} nats \u00a0|\u00a0 ${r.certainty_pct.toFixed(1)}% certain`;
+
+    // State description
+    const descEl = document.getElementById('sc-state-desc');
+    if (descEl) descEl.textContent = ETI_DESCS[state];
+}
+
 function renderPopBars(containerId, labels, values) {
     const container  = document.getElementById(containerId);
     const classNames = ['fill-young', 'fill-inter', 'fill-old'];
@@ -180,6 +229,7 @@ function renderPopBars(containerId, labels, values) {
         requestAnimationFrame(() => { requestAnimationFrame(() => { div.querySelector('.sf-progress-bar-fill').style.width = Math.min(val, 100) + '%'; }); });
     });
 }
+
 
 function renderDominantCard(r) {
     const icons = { 'Young stars': '🔵', 'Intermediate stars': '🟢', 'Old stars': '🔴' };
@@ -496,13 +546,27 @@ function renderComparisonTab(main, baseline) {
     }
 }
 
-function toggleBaselineMode(isBaseline) {
+async function toggleBaselineMode(isBaseline) {
     const warn = document.getElementById('baseline-warn');
     if (warn) warn.style.display = isBaseline ? 'block' : 'none';
     if (!window._scLastResult) return;
     const r = window._scLastResult;
-    const fracs = isBaseline ? (r._baseline ? r._baseline.gmm_fractions : r.gmm_fractions) : r.mlp_fractions;
-    updateFractionBars(fracs, r.labels);
+    if (isBaseline) {
+        // Fetch real basic-encoder GMM fractions
+        try {
+            const inp = r._input;
+            const res = await fetch('/api/starcharacterizer/predict_basic', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ u:inp.u, g:inp.g, r:inp.r, i:inp.i, z:inp.z, redshift:inp.redshift })
+            });
+            const basic = await res.json();
+            updateFractionBars(basic.gmm_fractions, basic.labels);
+        } catch(e) {
+            updateFractionBars(r.gmm_fractions, r.labels); // fallback
+        }
+    } else {
+        updateFractionBars(r.mlp_fractions, r.labels);
+    }
 }
 
 async function runInvarianceCheck(z) {
