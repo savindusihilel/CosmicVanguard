@@ -38,6 +38,9 @@ GALAXY_ASSETS_DIR = os.path.join(ASSETS_DIR, "galaxy")
 TRANSIENT_ASSETS_DIR = os.path.join(ASSETS_DIR, "transient")
 QUASAR_ASSETS_DIR = os.path.join(ASSETS_DIR, "quasarwatch")
 STARFORGE_ASSETS_DIR = os.path.join(ASSETS_DIR, "starforge")
+# STARCHARACTERIZER START
+STARCHARACTERIZER_ASSETS_DIR = os.path.join(ASSETS_DIR, "StarCharacterizer")
+# STARCHARACTERIZER END
 
 FEATURE_NAMES = [
     "u",
@@ -254,6 +257,12 @@ async def read_starforge():
 @app.get("/transient")
 async def read_transient():
     return FileResponse(os.path.join(STATIC_DIR, "transient.html"))
+
+# STARCHARACTERIZER START
+@app.get("/starcharacterizer")
+async def read_starcharacterizer():
+    return FileResponse(os.path.join(STATIC_DIR, "starcharacterizer.html"))
+# STARCHARACTERIZER END
 
 @app.get("/contact")
 async def read_contact():
@@ -559,6 +568,114 @@ async def predict(data: GalaxyInput):
 
         **rf_res
     )
+
+# STARCHARACTERIZER START
+@app.post("/api/starcharacterizer/predict")
+async def predict_starcharacterizer(data: GalaxyInput):
+    try:
+        import glob
+        import tensorflow as tf
+        import joblib as _jl
+        import numpy as np
+        from sklearn.decomposition import PCA
+        from sklearn.linear_model import LinearRegression
+        from fastapi import HTTPException
+
+        d = STARCHARACTERIZER_ASSETS_DIR
+
+        # Step 1 — derive colour indices
+        u_g = data.u - data.g
+        r_i = data.r - data.i
+        i_z = data.i - data.z
+
+        # Step 2 — assemble 9-feature vector: u,g,r,i,z,redshift,u_g,r_i,i_z
+        x = np.array([[data.u, data.g, data.r, data.i, data.z,
+                        data.redshift, u_g, r_i, i_z]], dtype=np.float32)
+
+        # Step 3 — scale using scaler_cosmo.pkl
+        scaler = _jl.load(os.path.join(d, "scaler_cosmo.pkl"))
+        x_scaled = scaler.transform(x)
+
+        # Step 4 — split: photometry slice (cols 0-4, 6-8) and redshift (col 5)
+        phot_slice   = x_scaled[:, [0, 1, 2, 3, 4, 6, 7, 8]]   # shape (1, 8)
+        redshift_col = x_scaled[:, 5:6]                          # shape (1, 1)
+
+        # Step 5 — load nuisance-projection artefacts
+        alpha = float(np.load(os.path.join(d, "alpha_optimal_final.npy"))[0])
+        ols   = _jl.load(os.path.join(d, "ols_projection_final.pkl"))
+
+        # Step 6 — lightweight PCA(8) fitted on training latents; transform phot slice
+        z_train = np.load(os.path.join(d, "z_intrinsic_train_final.npy"))
+        pca_latent = PCA(n_components=8, random_state=42)
+        pca_latent.fit(z_train)
+        z_raw = pca_latent.transform(phot_slice)   # shape (1, 8)
+
+        # Step 7 — OLS nuisance removal: z_clean = z_raw - alpha * ols.predict(redshift)
+        ols_pred = ols.predict(redshift_col)       # shape (1, 8) or (1,)
+        if ols_pred.ndim == 1:
+            ols_pred = ols_pred.reshape(1, -1)
+        # Align dimensions
+        if ols_pred.shape[1] != z_raw.shape[1]:
+            min_dim = min(ols_pred.shape[1], z_raw.shape[1])
+            z_clean = z_raw[:, :min_dim] - alpha * ols_pred[:, :min_dim]
+        else:
+            z_clean = z_raw - alpha * ols_pred
+
+        # Step 8 — PCA whitening
+        pca_whitening = _jl.load(os.path.join(d, "pca_whitening_final.pkl"))
+        z_whitened = pca_whitening.transform(z_clean)
+
+        # Step 9 — GMM soft fractions with temperature softening T=4.5
+        gmm = _jl.load(os.path.join(d, "gmm_final.pkl"))
+        gmm_proba = gmm.predict_proba(z_whitened)    # shape (1, n_components)
+        T = 4.5
+        gmm_proba = np.clip(gmm_proba, 1e-9, None)
+        gmm_proba = gmm_proba ** (1.0 / T)
+        gmm_proba = gmm_proba / gmm_proba.sum(axis=1, keepdims=True)
+        # Use first 3 components as [young, inter, old]
+        gmm_fracs = gmm_proba[0, :3]
+        if gmm_fracs.sum() > 0:
+            gmm_fracs = gmm_fracs / gmm_fracs.sum()
+        gmm_fracs = (gmm_fracs * 100).tolist()
+
+        # Step 10 — MLP population head
+        pop_model   = tf.keras.models.load_model(os.path.join(d, "population_model_final.keras"))
+        mlp_raw     = pop_model.predict(z_clean, verbose=0)[0]
+        mlp_raw     = np.clip(mlp_raw, 0, None)
+        if mlp_raw.sum() > 0:
+            mlp_raw = mlp_raw / mlp_raw.sum()
+        mlp_fracs   = (mlp_raw * 100).tolist()
+
+        # Step 11 — metrics (derived from MLP output only)
+        labels       = ["Young stars", "Intermediate stars", "Old stars"]
+        p            = np.array(mlp_fracs) / 100.0
+        entropy      = float(-np.sum(p * np.log(p + 1e-9)))
+        certainty_pct = float((1.0 - entropy / np.log(3)) * 100.0)
+        dominant_idx = int(np.argmax(p))
+        dominant     = labels[dominant_idx]
+        gmm_p        = np.array(gmm_fracs) / 100.0
+        agreement_pct = float((1.0 - np.mean(np.abs(gmm_p - p))) * 100.0)
+
+        return {
+            "labels":        labels,
+            "gmm_fractions": [round(float(v), 4) for v in gmm_fracs],
+            "mlp_fractions": [round(float(v), 4) for v in mlp_fracs],
+            "dominant":      dominant,
+            "entropy":       round(entropy, 6),
+            "certainty_pct": round(certainty_pct, 4),
+            "agreement_pct": round(agreement_pct, 4),
+            "derived": {
+                "u_g": round(float(u_g), 4),
+                "r_i": round(float(r_i), 4),
+                "i_z": round(float(i_z), 4)
+            }
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))
+# STARCHARACTERIZER END
 
 # ======================
 # STARFORGE ENDPOINTS
