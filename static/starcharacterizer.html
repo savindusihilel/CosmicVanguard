@@ -102,21 +102,29 @@
 
                     <!-- TAB 1: Interpretation -->
                     <div class="sc-tab-panel" id="tab-interpretation">
-                        <div class="sc-dominant-card" id="dominantCard">
-                            <div class="sc-dominant-header">
-                                <div>
-                                    <div class="sc-dominant-label">Dominant Population</div>
-                                    <div class="sc-dominant-value">
-                                        <span id="sc-dominant-icon" style="font-size:1.4rem;"></span>
-                                        <span id="sc-dominant-name">—</span>
-                                        <span class="sc-dominant-pct" id="sc-dominant-pct">—</span>
-                                    </div>
-                                </div>
-                                <span class="sc-transitional-badge hidden" id="sc-transitional-badge">Transitional Galaxy</span>
+
+                        <!-- ETI Arc Gauge + State Badge -->
+                        <div class="sc-eti-block">
+                            <div class="sc-eti-gauge-wrap">
+                                <svg class="sc-eti-svg" viewBox="0 0 140 80" xmlns="http://www.w3.org/2000/svg">
+                                    <!-- track arc -->
+                                    <path class="sc-eti-track" d="M14,74 A60,60 0 0,1 126,74" fill="none" stroke-width="10" stroke-linecap="round"/>
+                                    <!-- filled arc (updated by JS) -->
+                                    <path class="sc-eti-fill" id="sc-eti-arc" d="M14,74 A60,60 0 0,1 126,74" fill="none" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 189"/>
+                                    <!-- centre text -->
+                                    <text x="70" y="62" text-anchor="middle" class="sc-eti-num" id="sc-eti-pct">—</text>
+                                    <text x="70" y="76" text-anchor="middle" class="sc-eti-sub">ETI</text>
+                                </svg>
+                                <div class="sc-eti-label">Evolutionary Transition Index</div>
                             </div>
-                            <p class="sc-interpretation" id="sc-dominant-interp">—</p>
+                            <div class="sc-eti-right">
+                                <div class="sc-state-badge" id="sc-state-badge">—</div>
+                                <div class="sc-h-readout" id="sc-h-readout">H = — nats &nbsp;|&nbsp; —% certain</div>
+                                <p class="sc-state-desc" id="sc-state-desc">Run a prediction to see the population state.</p>
+                            </div>
                         </div>
 
+                        <!-- Fraction Bars -->
                         <div class="sc-fraction-section">
                             <div class="sc-model-group">
                                 <div class="sc-model-group-title"><span class="dot-gmm"></span>GMM Soft Assignments</div>
@@ -128,19 +136,7 @@
                             </div>
                         </div>
 
-                        <div class="sc-entropy-section">
-                            <div class="sc-entropy-label-row">
-                                <span class="sc-entropy-title">Population Certainty</span>
-                                <div class="sc-entropy-readouts">
-                                    <span class="sc-entropy-raw" id="sc-entropy-val">H = —</span>
-                                    <span class="sc-certainty-raw" id="sc-certainty-val">— certain</span>
-                                </div>
-                            </div>
-                            <div class="sc-entropy-bar-wrap"><div class="sc-entropy-fill" id="sc-entropy-fill" style="width:0%;"></div></div>
-                        </div>
-
-                        <div class="sc-plain-summary" id="sc-plain-summary">Run a prediction to see a plain-language galaxy summary.</div>
-
+                        <!-- Metrics row -->
                         <div class="sc-metrics-row">
                             <div class="sc-metric-chip"><span class="sc-metric-chip-label">GMM–MLP Agreement</span><span class="sc-metric-chip-value" id="sc-agreement-val">—</span></div>
                             <div class="sc-metric-chip"><span class="sc-metric-chip-label">Certainty Score</span><span class="sc-metric-chip-value" id="sc-certainty-chip">—</span></div>

@@ -767,6 +767,58 @@ async def baseline_starcharacterizer(data: GalaxyInput):
 # STARCHARACTERIZER END (baseline)
 
 
+# STARCHARACTERIZER START (predict_basic)
+@app.post("/api/starcharacterizer/predict_basic")
+async def predict_basic_starcharacterizer(data: GalaxyInput):
+    """Basic encoder + GMM only — no OLS nuisance projection, no PCA whitening.
+    Used by the Comparison tab Baseline Mode toggle to show the cosmologically
+    biased result contrasted against the disentangled Split-VAE output."""
+    try:
+        import math, numpy as np
+        from fastapi import HTTPException
+
+        d_L = _sc_cosmo.luminosity_distance(max(data.redshift, 1e-6)).value
+        dm  = 5.0 * np.log10(d_L) + 25.0
+        u_abs=data.u-dm; g_abs=data.g-dm; r_abs=data.r-dm; i_abs=data.i-dm; z_abs=data.z-dm
+        u_g_abs=u_abs-g_abs; r_i_abs=r_abs-i_abs; i_z_abs=i_abs-z_abs
+
+        feature_vector = np.array([[
+            u_abs, g_abs, r_abs, i_abs, z_abs,
+            data.redshift, u_g_abs, r_i_abs, i_z_abs
+        ]], dtype=np.float32)
+        feature_scaled = _sc_scaler.transform(feature_vector)
+
+        # Basic encoder (4-dim latent, no redshift disentanglement)
+        z_basic   = _sc_basic_encoder.predict(feature_scaled, verbose=0)
+        gmm_proba = _sc_basic_gmm.predict_proba(z_basic)
+        gmm_proba = np.clip(gmm_proba, 1e-9, None) ** (1.0 / 4.5)
+        gmm_proba = gmm_proba / gmm_proba.sum(axis=1, keepdims=True)
+        gmm_fracs = gmm_proba[0, :3]
+        if gmm_fracs.sum() > 0: gmm_fracs = gmm_fracs / gmm_fracs.sum()
+        gmm_fracs = (gmm_fracs * 100.0).tolist()
+
+        labels        = ["Young stars", "Intermediate stars", "Old stars"]
+        p             = np.array(gmm_fracs) / 100.0
+        entropy       = float(-np.sum(p * np.log(p + 1e-9)))
+        certainty_pct = float((1.0 - entropy / math.log(3)) * 100.0)
+        dominant      = labels[int(np.argmax(p))]
+
+        return {
+            "labels":        labels,
+            "gmm_fractions": [round(float(v), 4) for v in gmm_fracs],
+            "dominant":      dominant,
+            "entropy":       round(entropy, 6),
+            "certainty_pct": round(certainty_pct, 4),
+            "baseline_r2":   -0.4954,
+            "baseline_mae":  0.2412
+        }
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))
+# STARCHARACTERIZER END (predict_basic)
+
+
 # ======================
 # STARFORGE ENDPOINTS
 # ======================
