@@ -538,6 +538,6 @@ async function runInvarianceCheck(z) {
 // ══════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
     initTabs();
-// ══════════════════════════
-//  INIT
-// ══════════════════════════
+    updateDerivedChips();
+});
+
