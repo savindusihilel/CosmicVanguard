@@ -1,85 +1,104 @@
 /* ═══════════════════════════════════════════
-   StarCharacterizer — Frontend Logic
+   StarCharacterizer — Conference Edition JS
    ═══════════════════════════════════════════ */
 
-// ── Chart.js Global Theme (identical to galaxy.js) ──
+// ── Global Chart.js theme ──
 Chart.defaults.color = '#94a3b8';
 Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
 Chart.defaults.font.family = "'Inter', sans-serif";
 Chart.defaults.font.size = 12;
 
+// ── Chart instances ──
 let comparisonChart = null, radarChart = null;
+let cmdChart = null, ablationChart = null, comparisonMiniChart = null, featureChart = null;
+let ablationRendered = false;
 
-// ══════════════════════
+// ── Ablation data (hardcoded research constants) ──
+const ABLATION_DATA = {
+    configs: ['Baseline VAE', 'VAE + GRL', 'VAE + GRL + HSIC', 'Full Model'],
+    r2:      [0.8812, 0.9205, 0.9610, 0.9795],
+    pearson: [0.3210, 0.1540, 0.0820, 0.0297]
+};
+
+// ── CMD background points (hardcoded) ──
+const CMD_RED_SEQ   = [{x:-20.1,y:2.1},{x:-20.5,y:2.3},{x:-21.0,y:2.4},{x:-21.3,y:2.6},{x:-21.7,y:2.7},{x:-22.0,y:2.8},{x:-22.2,y:2.5},{x:-22.5,y:2.9},{x:-20.8,y:2.2},{x:-21.5,y:2.6},{x:-22.8,y:3.0},{x:-20.3,y:2.3},{x:-21.9,y:2.7},{x:-22.1,y:2.8},{x:-23.0,y:2.9}];
+const CMD_GREEN_VAL = [{x:-19.5,y:1.6},{x:-19.8,y:1.7},{x:-20.1,y:1.8},{x:-20.4,y:1.9},{x:-20.7,y:1.6},{x:-21.0,y:1.9},{x:-19.2,y:1.5},{x:-20.8,y:1.8},{x:-20.2,y:1.7},{x:-19.7,y:1.6}];
+const CMD_BLUE_CLOUD= [{x:-18.2,y:0.6},{x:-18.5,y:0.8},{x:-19.0,y:0.9},{x:-19.3,y:1.1},{x:-19.7,y:1.3},{x:-20.0,y:1.0},{x:-20.3,y:1.4},{x:-18.8,y:0.7},{x:-19.5,y:1.2},{x:-20.1,y:1.1},{x:-18.4,y:0.5},{x:-19.1,y:0.8},{x:-20.5,y:1.3},{x:-18.7,y:0.9},{x:-21.0,y:1.5}];
+const CMD_EXT_BLUE  = [{x:-17.2,y:-0.1},{x:-17.5,y:0.2},{x:-18.0,y:-0.3},{x:-18.3,y:0.1},{x:-17.8,y:0.3},{x:-19.0,y:0.0},{x:-18.5,y:-0.4},{x:-19.2,y:0.1},{x:-17.3,y:0.4},{x:-20.0,y:-0.2}];
+
+// ══════════════════════════
+//  TAB SYSTEM
+// ══════════════════════════
+function initTabs() {
+    document.querySelectorAll('.sc-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.sc-tab').forEach(b => b.classList.remove('sc-tab--active'));
+            document.querySelectorAll('.sc-tab-panel').forEach(p => p.classList.add('hidden'));
+            btn.classList.add('sc-tab--active');
+            const panel = document.getElementById('tab-' + btn.dataset.tab);
+            if (panel) panel.classList.remove('hidden');
+            // Lazy-render ablation chart on first diagnostics tab visit
+            if (btn.dataset.tab === 'diagnostics' && !ablationRendered) {
+                renderAblation();
+            }
+        });
+    });
+}
+
+// ══════════════════════════
 //  LIVE DERIVED CHIPS
-// ══════════════════════
+// ══════════════════════════
 function updateDerivedChips() {
     const u = parseFloat(document.getElementById('sc_u').value) || 0;
     const g = parseFloat(document.getElementById('sc_g').value) || 0;
     const r = parseFloat(document.getElementById('sc_r').value) || 0;
     const i = parseFloat(document.getElementById('sc_i').value) || 0;
     const z = parseFloat(document.getElementById('sc_z').value) || 0;
-
     document.getElementById('chip_ug').textContent = (u - g).toFixed(2);
     document.getElementById('chip_ri').textContent = (r - i).toFixed(2);
     document.getElementById('chip_iz').textContent = (i - z).toFixed(2);
 }
-
-['sc_u', 'sc_g', 'sc_r', 'sc_i', 'sc_z', 'sc_redshift'].forEach(id => {
+['sc_u','sc_g','sc_r','sc_i','sc_z','sc_redshift'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', updateDerivedChips);
 });
 
-// ══════════════════════
+// ══════════════════════════
 //  PRESET LOADERS
-// ══════════════════════
+// ══════════════════════════
 function fillPreset(u, g, r, i, z, redshift) {
-    document.getElementById('sc_u').value       = u;
-    document.getElementById('sc_g').value       = g;
-    document.getElementById('sc_r').value       = r;
-    document.getElementById('sc_i').value       = i;
-    document.getElementById('sc_z').value       = z;
+    document.getElementById('sc_u').value        = u;
+    document.getElementById('sc_g').value        = g;
+    document.getElementById('sc_r').value        = r;
+    document.getElementById('sc_i').value        = i;
+    document.getElementById('sc_z').value        = z;
     document.getElementById('sc_redshift').value = redshift;
     updateDerivedChips();
 }
+document.getElementById('preset-starburst').addEventListener('click',  () => fillPreset(20.1, 20.5, 20.3, 20.1, 20.0, 0.08));
+document.getElementById('preset-elliptical').addEventListener('click', () => fillPreset(21.5, 20.2, 19.5, 19.1, 18.9, 0.10));
+document.getElementById('preset-greenvalley').addEventListener('click',() => fillPreset(20.8, 20.0, 19.6, 19.3, 19.1, 0.12));
+document.getElementById('preset-disk').addEventListener('click',       () => fillPreset(20.3, 19.9, 19.5, 19.2, 19.0, 0.09));
 
-document.getElementById('preset-starburst').addEventListener('click', () =>
-    fillPreset(20.1, 20.5, 20.3, 20.1, 20.0, 0.08));
-
-document.getElementById('preset-elliptical').addEventListener('click', () =>
-    fillPreset(21.5, 20.2, 19.5, 19.1, 18.9, 0.10));
-
-document.getElementById('preset-greenvalley').addEventListener('click', () =>
-    fillPreset(20.8, 20.0, 19.6, 19.3, 19.1, 0.12));
-
-document.getElementById('preset-disk').addEventListener('click', () =>
-    fillPreset(20.3, 19.9, 19.5, 19.2, 19.0, 0.09));
-
-// ══════════════════════
+// ══════════════════════════
 //  LOADING STATE
-// ══════════════════════
-function setLoading(isLoading) {
-    const loader   = document.getElementById('loading');
-    const results  = document.getElementById('resultsContent');
-    const empty    = document.getElementById('emptyState');
-
-    if (isLoading) {
-        loader.classList.remove('hidden');
-        empty.classList.add('hidden');
-        if (!results.classList.contains('hidden')) results.classList.add('hidden');
-    } else {
-        loader.classList.add('hidden');
+// ══════════════════════════
+function setLoading(on) {
+    document.getElementById('loading').classList.toggle('hidden', !on);
+    if (on) {
+        document.getElementById('emptyState').classList.add('hidden');
+        document.getElementById('resultsContent').classList.add('hidden');
     }
 }
 
-// ══════════════════════
-//  FORM SUBMIT
-// ══════════════════════
+// ══════════════════════════
+//  FORM SUBMIT — dual fetch
+// ══════════════════════════
 document.getElementById('scForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    const data = {
+    const inputs = {
         u:        parseFloat(document.getElementById('sc_u').value),
         g:        parseFloat(document.getElementById('sc_g').value),
         r:        parseFloat(document.getElementById('sc_r').value),
@@ -88,18 +107,15 @@ document.getElementById('scForm').addEventListener('submit', async (e) => {
         redshift: parseFloat(document.getElementById('sc_redshift').value)
     };
 
+    const body = JSON.stringify(inputs);
+    const hdr  = { 'Content-Type': 'application/json' };
+
     try {
-        const res = await fetch('/api/starcharacterizer/predict', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify(data)
-        });
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({ detail: res.statusText }));
-            throw new Error(err.detail || res.statusText);
-        }
-        const result = await res.json();
-        displayResults(result);
+        const [mainResult, baselineResult] = await Promise.all([
+            fetch('/api/starcharacterizer/predict',  { method: 'POST', headers: hdr, body }).then(r => { if (!r.ok) return r.json().then(e => { throw new Error(e.detail || r.statusText); }); return r.json(); }),
+            fetch('/api/starcharacterizer/baseline', { method: 'POST', headers: hdr, body }).then(r => { if (!r.ok) return r.json().then(e => { throw new Error(e.detail || r.statusText); }); return r.json(); })
+        ]);
+        displayResults(mainResult, baselineResult, inputs);
     } catch (err) {
         alert('Characterization failed: ' + err.message);
     } finally {
@@ -107,233 +123,315 @@ document.getElementById('scForm').addEventListener('submit', async (e) => {
     }
 });
 
-// ══════════════════════
+// ══════════════════════════
 //  DISPLAY RESULTS
-// ══════════════════════
-function displayResults(r) {
+// ══════════════════════════
+function displayResults(r, baseline, inputs) {
     document.getElementById('emptyState').classList.add('hidden');
     document.getElementById('resultsContent').classList.remove('hidden');
 
+    // Tab 1 — Interpretation
+    renderDominantCard(r);
     renderPopBars('gmmBars', r.labels, r.gmm_fractions);
     renderPopBars('mlpBars', r.labels, r.mlp_fractions);
-    renderComparisonChart(r);
-    renderRadarChart(r);
-    renderDominantCard(r);
     renderEntropyBar(r);
-    renderMetrics(r);
+    renderPlainSummary(r);
+    document.getElementById('sc-agreement-val').textContent  = r.agreement_pct.toFixed(1) + '%';
+    document.getElementById('sc-certainty-chip').textContent = r.certainty_pct.toFixed(1) + '%';
+
+    // Tab 2 — Explainability
+    renderFeatureImportance(r);
+    renderPopulationConfidence(r);
+    renderDisentanglementPanel(r);
+
+    // Tab 3 — Evolution
+    renderCMD(r, inputs);
+    renderEvolutionTimeline(r);
+
+    // Tab 5 — Comparison (baseline + main available)
+    renderComparisonTab(r, baseline);
 }
 
-// ══════════════════════
-//  POPULATION BARS
-//  (identical pattern to starforge.js renderPopBars)
-// ══════════════════════
+// ══════════════════════════
+//  TAB 1 RENDERS
+// ══════════════════════════
 function renderPopBars(containerId, labels, values) {
     const container  = document.getElementById(containerId);
     const classNames = ['fill-young', 'fill-inter', 'fill-old'];
-
     container.innerHTML = '';
-
     labels.forEach((label, i) => {
         const val = values[i];
         const div = document.createElement('div');
         div.className = 'sf-progress-item';
-        div.innerHTML = `
-            <div class="sf-progress-label">
-                <strong>${label}</strong>
-                <span style="font-family:'JetBrains Mono',monospace;">${val.toFixed(2)}%</span>
-            </div>
-            <div class="sf-progress-bar-bg">
-                <div class="sf-progress-bar-fill ${classNames[i]}" style="width:0%"></div>
-            </div>
-        `;
+        div.innerHTML = `<div class="sf-progress-label"><strong>${label}</strong><span style="font-family:'JetBrains Mono',monospace;">${val.toFixed(2)}%</span></div><div class="sf-progress-bar-bg"><div class="sf-progress-bar-fill ${classNames[i]}" style="width:0%"></div></div>`;
         container.appendChild(div);
-
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                div.querySelector('.sf-progress-bar-fill').style.width = `${Math.min(val, 100)}%`;
-            });
-        });
+        requestAnimationFrame(() => { requestAnimationFrame(() => { div.querySelector('.sf-progress-bar-fill').style.width = Math.min(val, 100) + '%'; }); });
     });
 }
 
-// ══════════════════════
-//  COMPARISON BAR CHART
-// ══════════════════════
-function renderComparisonChart(r) {
-    const ctx = document.getElementById('comparisonChart');
-    if (comparisonChart) comparisonChart.destroy();
-
-    comparisonChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: r.labels,
-            datasets: [
-                {
-                    label: 'GMM Soft Assignment',
-                    data: r.gmm_fractions,
-                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                    borderColor: '#3b82f6',
-                    borderWidth: 1,
-                    borderRadius: 4,
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.7
-                },
-                {
-                    label: 'MLP / Split-VAE',
-                    data: r.mlp_fractions,
-                    backgroundColor: 'rgba(139, 92, 246, 0.7)',
-                    borderColor: '#8b5cf6',
-                    borderWidth: 1,
-                    borderRadius: 4,
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.7
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 800, easing: 'easeOutQuart' },
-            scales: {
-                x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
-                y: {
-                    title: { display: true, text: 'Fraction (%)', color: '#94a3b8' },
-                    grid: { color: 'rgba(255,255,255,0.04)' },
-                    min: 0, max: 100,
-                    ticks: { color: '#64748b' }
-                }
-            },
-            plugins: {
-                legend: { position: 'top', labels: { color: '#cbd5e1', usePointStyle: true, padding: 12 } },
-                tooltip: {
-                    backgroundColor: 'rgba(15,23,42,0.95)',
-                    titleColor: '#f1f5f9',
-                    bodyColor: '#cbd5e1',
-                    borderColor: 'rgba(255,255,255,0.08)',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                    padding: 10,
-                    callbacks: { label: c => `${c.dataset.label}: ${c.raw.toFixed(1)}%` }
-                }
-            }
-        }
-    });
-}
-
-// ══════════════════════
-//  RADAR CHART
-// ══════════════════════
-function renderRadarChart(r) {
-    const ctx = document.getElementById('radarChart');
-    if (radarChart) radarChart.destroy();
-
-    radarChart = new Chart(ctx, {
-        type: 'radar',
-        data: {
-            labels: r.labels,
-            datasets: [
-                {
-                    label: 'GMM',
-                    data: r.gmm_fractions,
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                    borderWidth: 2,
-                    pointBackgroundColor: '#3b82f6',
-                    pointRadius: 3
-                },
-                {
-                    label: 'Split-VAE (MLP)',
-                    data: r.mlp_fractions,
-                    borderColor: '#8b5cf6',
-                    backgroundColor: 'rgba(139, 92, 246, 0.12)',
-                    borderWidth: 2,
-                    pointBackgroundColor: '#8b5cf6',
-                    pointRadius: 3
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 800 },
-            scales: {
-                r: {
-                    beginAtZero: true,
-                    max: 100,
-                    grid: { color: 'rgba(255,255,255,0.06)' },
-                    angleLines: { color: 'rgba(255,255,255,0.06)' },
-                    pointLabels: { color: '#94a3b8', font: { size: 11 } },
-                    ticks: { display: false }
-                }
-            },
-            plugins: {
-                legend: { labels: { color: '#cbd5e1', usePointStyle: true, padding: 12 } }
-            }
-        }
-    });
-}
-
-// ══════════════════════
-//  DOMINANT CARD
-// ══════════════════════
 function renderDominantCard(r) {
-    const interpretations = {
+    const icons = { 'Young stars': '🔵', 'Intermediate stars': '🟢', 'Old stars': '🔴' };
+    const interps = {
         'Young stars':        'Actively star-forming galaxy with significant recent star formation activity.',
         'Intermediate stars': 'Mixed-age stellar population suggesting a transitional evolutionary phase.',
         'Old stars':          'Passively evolving galaxy dominated by old, metal-rich stellar populations.'
     };
-
-    const dominantPct  = Math.max(...r.mlp_fractions);
-    const interpretation = interpretations[r.dominant] || '';
-
-    document.getElementById('sc-dominant-name').textContent = r.dominant;
-    document.getElementById('sc-dominant-pct').textContent  = `${dominantPct.toFixed(1)}%`;
-    document.getElementById('sc-dominant-interp').textContent = interpretation;
-
-    const badge = document.getElementById('sc-transitional-badge');
-    if (r.entropy > 1.0) {
-        badge.classList.remove('hidden');
-    } else {
-        badge.classList.add('hidden');
-    }
+    const pct = Math.max(...r.mlp_fractions);
+    document.getElementById('sc-dominant-icon').textContent   = icons[r.dominant] || '⭐';
+    document.getElementById('sc-dominant-name').textContent   = r.dominant;
+    document.getElementById('sc-dominant-pct').textContent    = pct.toFixed(1) + '%';
+    document.getElementById('sc-dominant-interp').textContent = interps[r.dominant] || '';
+    document.getElementById('sc-transitional-badge').classList.toggle('hidden', r.entropy <= 1.0);
 }
 
-// ══════════════════════
-//  ENTROPY BAR
-// ══════════════════════
 function renderEntropyBar(r) {
     const fill   = document.getElementById('sc-entropy-fill');
     const target = Math.min((r.entropy / Math.log(3)) * 100, 100);
-
-    // Color coding
-    let color;
-    if (r.entropy < 0.5) {
-        color = 'var(--emerald)';
-    } else if (r.entropy <= 1.0) {
-        color = 'var(--amber)';
-    } else {
-        color = 'var(--red)';
-    }
-
+    const color  = r.entropy < 0.5 ? 'var(--emerald)' : r.entropy <= 1.0 ? 'var(--amber)' : 'var(--red)';
     fill.style.backgroundColor = color;
+    requestAnimationFrame(() => { requestAnimationFrame(() => { fill.style.width = target + '%'; }); });
+    document.getElementById('sc-entropy-val').textContent   = 'H = ' + r.entropy.toFixed(3) + ' nats';
+    document.getElementById('sc-certainty-val').textContent = r.certainty_pct.toFixed(1) + '% certain';
+}
 
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            fill.style.width = `${target}%`;
-        });
+function renderPlainSummary(r) {
+    const dom = r.dominant.toLowerCase();
+    let text = '';
+    if (dom.includes('young')) {
+        text = `This galaxy is actively forming new stars, with ${r.mlp_fractions[0].toFixed(1)}% of its stellar population classified as young. Its photometric colours indicate recent or ongoing star formation activity.`;
+    } else if (dom.includes('intermediate')) {
+        text = `This galaxy shows a mixed stellar population with ${r.mlp_fractions[1].toFixed(1)}% intermediate-age stars. It may be transitioning from active star formation toward quiescence — a Green Valley galaxy.`;
+    } else {
+        text = `This galaxy is dominated by old stellar populations (${r.mlp_fractions[2].toFixed(1)}%), consistent with a passively evolving elliptical or lenticular system with little recent star formation.`;
+    }
+    if (r.entropy > 1.0) text += ' The high prediction entropy suggests this galaxy occupies a transitional evolutionary state.';
+    text += ` Cosmological redshift bias has been removed using an OLS projection with α = ${r.alpha_used}.`;
+    document.getElementById('sc-plain-summary').textContent = text;
+}
+
+// ══════════════════════════
+//  TAB 2 RENDERS
+// ══════════════════════════
+function renderFeatureImportance(r) {
+    const ctx    = document.getElementById('featureChart');
+    const fi     = r.feature_importance;
+    const vals   = [fi.u_g, fi.r_i, fi.i_z, fi.redshift_weight];
+    const labels = ['u−g', 'r−i', 'i−z', 'Redshift'];
+    const maxVal = Math.max(...vals);
+    const colors = vals.map(v => v === maxVal ? '#3b82f6' : 'rgba(99,102,241,0.4)');
+    if (featureChart) featureChart.destroy();
+    featureChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{ data: vals, backgroundColor: colors, borderColor: colors, borderWidth: 1, borderRadius: 4 }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: false,
+            animation: { duration: 700, easing: 'easeOutQuart' },
+            scales: {
+                x: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: v => v + '%' } },
+                y: { grid: { display: false } }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: c => c.raw.toFixed(1) + '%' }, backgroundColor: 'rgba(15,23,42,0.95)', padding: 8, cornerRadius: 6 }
+            }
+        }
+    });
+}
+
+function renderPopulationConfidence(r) {
+    const gauges = [
+        { id: 'gauge-young', pctId: 'gauge-young-pct', val: r.population_confidence[0] },
+        { id: 'gauge-inter', pctId: 'gauge-inter-pct', val: r.population_confidence[1] },
+        { id: 'gauge-old',   pctId: 'gauge-old-pct',   val: r.population_confidence[2] }
+    ];
+    gauges.forEach(g => {
+        const el  = document.getElementById(g.id);
+        const pct = document.getElementById(g.pctId);
+        if (el) el.style.setProperty('--fill', g.val);
+        if (pct) pct.textContent = g.val.toFixed(0) + '%';
+    });
+}
+
+function renderDisentanglementPanel(r) {
+    // Pearson r
+    const pr = r.pearson_r;
+    const prBadge = pr < 0.15
+        ? '<span class="sc-badge-pass">PASS</span>'
+        : '<span class="sc-badge-pass sc-badge-fail">FAIL</span>';
+    document.getElementById('dq-pearson').innerHTML = pr.toFixed(4) + prBadge;
+
+    // HSIC
+    const hs = r.hsic;
+    const hsBadge = hs < 0.05
+        ? '<span class="sc-badge-pass">PASS</span>'
+        : '<span class="sc-badge-pass sc-badge-fail">FAIL</span>';
+    document.getElementById('dq-hsic').innerHTML = hs.toFixed(6) + hsBadge;
+
+    // KS stat
+    const ks = r.ks_stat;
+    let ksBadge;
+    if (ks < 0.10)      ksBadge = '<span class="sc-badge-pass">PASS</span>';
+    else if (ks <= 0.15) ksBadge = '<span class="sc-badge-pass sc-badge-partial">PARTIAL</span>';
+    else                 ksBadge = '<span class="sc-badge-pass sc-badge-fail">FAIL</span>';
+    document.getElementById('dq-ks').innerHTML = ks.toFixed(4) + ksBadge;
+
+    // Reconstruction R²
+    const rr2 = r.reconstruction_r2;
+    document.getElementById('dq-recon-val').textContent = rr2.toFixed(4);
+    requestAnimationFrame(() => { requestAnimationFrame(() => { document.getElementById('dq-recon-bar').style.width = (rr2 * 100) + '%'; }); });
+
+    // Alpha
+    document.getElementById('dq-alpha').textContent = r.alpha_used;
+}
+
+// ══════════════════════════
+//  TAB 3 RENDERS
+// ══════════════════════════
+function renderCMD(r, inputs) {
+    const ctx = document.getElementById('cmdChart');
+    if (cmdChart) cmdChart.destroy();
+
+    const ur    = inputs.u - inputs.r;
+    const rAbs  = inputs.r - 5 * Math.log10(Math.max(inputs.redshift * 4283 + 10, 1)) - 25;
+    const domColors = { 'Young stars': '#3b82f6', 'Intermediate stars': '#10b981', 'Old stars': '#f59e0b' };
+    const pointColor = domColors[r.dominant] || '#8b5cf6';
+
+    cmdChart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [
+                { label: 'Red Sequence',   data: CMD_RED_SEQ,   backgroundColor: 'rgba(239,68,68,0.35)',  pointRadius: 5 },
+                { label: 'Green Valley',   data: CMD_GREEN_VAL, backgroundColor: 'rgba(16,185,129,0.35)', pointRadius: 5 },
+                { label: 'Blue Cloud',     data: CMD_BLUE_CLOUD,backgroundColor: 'rgba(59,130,246,0.35)', pointRadius: 5 },
+                { label: 'Extreme Blue',   data: CMD_EXT_BLUE,  backgroundColor: 'rgba(147,197,253,0.35)',pointRadius: 5 },
+                { label: 'This Galaxy ★', data: [{ x: rAbs, y: ur }], backgroundColor: pointColor, borderColor: '#ffffff', pointRadius: 10, pointStyle: 'star', borderWidth: 2 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { title: { display: true, text: 'Absolute r-band Magnitude (Mᵣ)', color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.04)' }, reverse: true },
+                y: { title: { display: true, text: 'u − r Colour Index', color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+            },
+            plugins: {
+                legend: { labels: { color: '#cbd5e1', usePointStyle: true, padding: 12, font: { size: 11 } } },
+                tooltip: { backgroundColor: 'rgba(15,23,42,0.95)', padding: 8, cornerRadius: 6, callbacks: { label: c => `${c.dataset.label}: (${c.raw.x.toFixed(2)}, ${c.raw.y.toFixed(2)})` } }
+            }
+        }
+    });
+}
+
+function renderEvolutionTimeline(r) {
+    // Clear previous active states
+    [0, 1, 2].forEach(i => {
+        const node = document.getElementById('sc-node-' + i);
+        if (node) node.classList.remove('sc-node--active');
+    });
+    const domIdx = r.dominant.toLowerCase().includes('young') ? 0 : r.dominant.toLowerCase().includes('inter') ? 1 : 2;
+    const active = document.getElementById('sc-node-' + domIdx);
+    if (active) {
+        active.setAttribute('r', '30');
+        active.classList.add('sc-node--active');
+    }
+}
+
+// ══════════════════════════
+//  TAB 4 RENDERS
+// ══════════════════════════
+function renderAblation() {
+    if (ablationRendered) return;
+    ablationRendered = true;
+    const ctx = document.getElementById('ablationChart');
+    if (ablationChart) ablationChart.destroy();
+    ablationChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ABLATION_DATA.configs,
+            datasets: [
+                {
+                    label: 'R² Score',
+                    data: ABLATION_DATA.r2,
+                    backgroundColor: ABLATION_DATA.configs.map((_, i) => i === 3 ? '#3b82f6' : 'rgba(59,130,246,0.45)'),
+                    borderColor: '#3b82f6', borderWidth: 1, borderRadius: 4, yAxisID: 'y'
+                },
+                {
+                    label: 'Pearson r with Redshift',
+                    data: ABLATION_DATA.pearson,
+                    backgroundColor: ABLATION_DATA.configs.map((_, i) => i === 3 ? '#ef4444' : 'rgba(239,68,68,0.45)'),
+                    borderColor: '#ef4444', borderWidth: 1, borderRadius: 4, yAxisID: 'y2'
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                y:  { title: { display: true, text: 'R²', color: '#3b82f6' }, min: 0.8, max: 1.0, grid: { color: 'rgba(255,255,255,0.04)' }, position: 'left' },
+                y2: { title: { display: true, text: '|Pearson r|', color: '#ef4444' }, min: 0, max: 0.4, grid: { display: false }, position: 'right' },
+                x:  { grid: { display: false } }
+            },
+            plugins: {
+                legend: { labels: { color: '#cbd5e1', usePointStyle: true, padding: 12 } },
+                tooltip: { backgroundColor: 'rgba(15,23,42,0.95)', padding: 8, cornerRadius: 6 }
+            }
+        }
+    });
+}
+
+// ══════════════════════════
+//  TAB 5 RENDERS
+// ══════════════════════════
+function renderComparisonTab(main, baseline) {
+    // Score cards
+    document.getElementById('cmp-baseline-r2').textContent  = baseline.baseline_r2.toFixed(4);
+    document.getElementById('cmp-baseline-mae').textContent = 'MAE ' + baseline.baseline_mae.toFixed(4);
+    document.getElementById('cmp-model-r2').textContent     = main.model_r2.toFixed(4);
+    document.getElementById('cmp-model-mae').textContent    = 'MAE ' + main.model_mae.toFixed(4);
+    document.getElementById('cmp-delta-r2').textContent     = '+' + (main.model_r2 - baseline.baseline_r2).toFixed(4);
+    document.getElementById('cmp-delta-mae').textContent    = '+' + (baseline.baseline_mae - main.model_mae).toFixed(4);
+
+    // Mini comparison chart
+    const ctx = document.getElementById('comparisonMiniChart');
+    if (comparisonMiniChart) comparisonMiniChart.destroy();
+    comparisonMiniChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['R²', 'MAE'],
+            datasets: [
+                { label: 'Baseline',   data: [baseline.baseline_r2, baseline.baseline_mae], backgroundColor: 'rgba(148,163,184,0.5)', borderColor: '#94a3b8', borderWidth: 1, borderRadius: 4, barPercentage: 0.6 },
+                { label: 'Split-VAE',  data: [main.model_r2, main.model_mae],               backgroundColor: 'rgba(59,130,246,0.7)',  borderColor: '#3b82f6', borderWidth: 1, borderRadius: 4, barPercentage: 0.6 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { grid: { display: false } },
+                y: { min: -0.6, max: 1.1, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b' } }
+            },
+            plugins: { legend: { labels: { color: '#cbd5e1', usePointStyle: true, padding: 10, font: { size: 11 } } } }
+        }
     });
 
-    document.getElementById('sc-entropy-val').textContent    = `H = ${r.entropy.toFixed(3)} nats`;
-    document.getElementById('sc-certainty-val').textContent  = `${r.certainty_pct.toFixed(1)}% certain`;
+    // Fraction diff chips
+    const labels   = ['Young', 'Intermediate', 'Old'];
+    const mlpFracs = main.mlp_fractions;
+    const gmmFracs = baseline.gmm_fractions;
+    ['diff-young', 'diff-inter', 'diff-old'].forEach((id, i) => {
+        const el   = document.getElementById(id);
+        const diff = mlpFracs[i] - gmmFracs[i];
+        const sign = diff >= 0 ? '+' : '';
+        el.textContent = `Δ ${labels[i]}: ${sign}${diff.toFixed(1)}%`;
+        el.style.color = diff >= 0 ? 'var(--emerald)' : 'var(--amber)';
+    });
 }
 
-// ══════════════════════
-//  METRICS
-// ══════════════════════
-function renderMetrics(r) {
-    document.getElementById('sc-agreement-val').textContent = `${r.agreement_pct.toFixed(1)}%`;
-    document.getElementById('sc-certainty-chip').textContent = `${r.certainty_pct.toFixed(1)}%`;
-}
-
-// ── Init derived chips on load ──
-updateDerivedChips();
+// ══════════════════════════
+//  INIT
+// ══════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+    initTabs();
+    updateDerivedChips();
+});
