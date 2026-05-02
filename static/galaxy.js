@@ -9,6 +9,9 @@ let lossChartLoaded = false;
 let evolutionChartLoaded = false;
 
 // ── Chart.js Global Theme ──
+window.lastInputJson = null;
+window.lastOutputJson = null;
+
 Chart.defaults.color = '#94a3b8';
 Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
 Chart.defaults.font.family = "'Inter', sans-serif";
@@ -39,6 +42,7 @@ document.getElementById('predictForm').addEventListener('submit', async (e) => {
         redshift: parseFloat(document.getElementById('redshift').value)
     };
 
+    window.lastInputJson = data;
     setLoading(true);
 
     try {
@@ -51,6 +55,7 @@ document.getElementById('predictForm').addEventListener('submit', async (e) => {
         if (!res.ok) throw new Error("API request failed");
 
         const result = await res.json();
+        window.lastOutputJson = result;
         displayResults(result);
     } catch (err) {
         alert("Prediction failed: " + err.message);
@@ -903,6 +908,37 @@ async function sdssSearchRegion() {
 // Enter key triggers search
 document.getElementById('sdssQuery')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); sdssDoSearch(); }
+});
+
+// ── Copy JSON Handlers ──
+document.getElementById('copyInputBtn')?.addEventListener('click', () => {
+    const data = window.lastInputJson || {
+        u: parseFloat(document.getElementById('u').value) || null,
+        g: parseFloat(document.getElementById('g').value) || null,
+        r: parseFloat(document.getElementById('r').value) || null,
+        i: parseFloat(document.getElementById('i').value) || null,
+        z: parseFloat(document.getElementById('z').value) || null,
+        redshift: parseFloat(document.getElementById('redshift').value) || null
+    };
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(() => {
+        const btn = document.getElementById('copyInputBtn');
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = 'Copied!';
+        setTimeout(() => btn.innerHTML = origHtml, 2000);
+    }).catch(err => console.error("Copy failed", err));
+});
+
+document.getElementById('copyOutputBtn')?.addEventListener('click', () => {
+    if (!window.lastOutputJson) {
+        alert('No prediction results to copy yet.');
+        return;
+    }
+    navigator.clipboard.writeText(JSON.stringify(window.lastOutputJson, null, 2)).then(() => {
+        const btn = document.getElementById('copyOutputBtn');
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = 'Copied!';
+        setTimeout(() => btn.innerHTML = origHtml, 2000);
+    }).catch(err => console.error("Copy failed", err));
 });
 
 // ── Init ──
