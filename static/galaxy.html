@@ -15,6 +15,7 @@
         rel="stylesheet">
     <!-- CSS -->
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/galaxy_style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -46,28 +47,107 @@
         </header>
 
         <main class="grid-layout">
-            <!-- ═══════════════ INPUT PANEL ═══════════════ -->
             <section class="panel input-panel" id="inputPanel">
                 <div class="panel-header" style="flex-direction: column; align-items: stretch; gap: 1rem;">
                     <h2>Configuration</h2>
 
-                    <div class="input-group"
-                        style="margin-bottom: 0; padding: 1rem; background: rgba(0,0,0,0.15); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
-                        <label style="margin-bottom: 0.75rem;">Real Galaxy Data <span class="label-hint">(SDSS
-                                Benchmark)</span></label>
-                        <div class="demo-controls" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                            <div class="demo-toggle" style="flex-shrink: 0;">
-                                <button type="button" class="demo-toggle-btn active" data-dataset="test"
-                                    id="demoToggleTest">Test Set</button>
-                                <button type="button" class="demo-toggle-btn" data-dataset="val" id="demoToggleVal">Val
-                                    Set</button>
+                    <!-- ═══ SDSS Live Explorer ═══ -->
+                    <div class="sdss-explorer" id="sdssExplorer">
+                        <div class="sdss-source-badge" id="sourceBadge">
+                            <span class="badge-dot"></span>
+                            <span id="sourceText">SDSS DR18 Live</span>
+                        </div>
+
+                        <!-- Search Tab Nav -->
+                        <div class="sdss-tabs">
+                            <button class="sdss-tab active" data-sdss-tab="search" id="sdssTabSearch">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                Search
+                            </button>
+                            <button class="sdss-tab" data-sdss-tab="random" id="sdssTabRandom">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="8" cy="8" r="1.5"/><circle cx="16" cy="16" r="1.5"/><circle cx="12" cy="12" r="1.5"/></svg>
+                                Random
+                            </button>
+                            <button class="sdss-tab" data-sdss-tab="region" id="sdssTabRegion">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10"/></svg>
+                                Region
+                            </button>
+                        </div>
+
+                        <!-- Search Panel -->
+                        <div class="sdss-panel active" id="sdssSearch">
+                            <div class="sdss-search-row">
+                                <input type="text" id="sdssQuery" class="sdss-input" placeholder="Enter objID or RA,Dec (e.g. 180.0,0.2)">
+                                <button type="button" class="sdss-btn" id="sdssSearchBtn" onclick="sdssDoSearch()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                </button>
                             </div>
-                            <select id="demoSelector" class="demo-select" style="flex: 1; min-width: 200px;">
-                                <option value="">Select a real galaxy…</option>
-                            </select>
+                        </div>
+
+                        <!-- Random Panel -->
+                        <div class="sdss-panel" id="sdssRandom">
+                            <div class="sdss-random-controls">
+                                <div class="sdss-range-group">
+                                    <label>Count</label>
+                                    <select id="sdssRandomN">
+                                        <option value="20" selected>20</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                </div>
+                                <div class="sdss-range-group">
+                                    <label>z<sub>min</sub></label>
+                                    <input type="number" id="sdssZMin" value="0.01" step="0.01" min="0" max="1" class="sdss-input-sm">
+                                </div>
+                                <div class="sdss-range-group">
+                                    <label>z<sub>max</sub></label>
+                                    <input type="number" id="sdssZMax" value="0.3" step="0.01" min="0" max="1" class="sdss-input-sm">
+                                </div>
+                                <button type="button" class="sdss-btn sdss-btn-wide" id="sdssRandomBtn" onclick="sdssLoadRandom()">Load Galaxies</button>
+                            </div>
+                        </div>
+
+                        <!-- Region Panel -->
+                        <div class="sdss-panel" id="sdssRegion">
+                            <div class="sdss-region-controls">
+                                <div class="sdss-range-group">
+                                    <label>RA (°)</label>
+                                    <input type="number" id="sdssRA" step="any" placeholder="180.0" class="sdss-input-sm">
+                                </div>
+                                <div class="sdss-range-group">
+                                    <label>Dec (°)</label>
+                                    <input type="number" id="sdssDec" step="any" placeholder="0.0" class="sdss-input-sm">
+                                </div>
+                                <div class="sdss-range-group">
+                                    <label>Radius (')</label>
+                                    <input type="number" id="sdssRadius" value="5" step="0.5" min="0.1" max="10" class="sdss-input-sm">
+                                </div>
+                                <button type="button" class="sdss-btn sdss-btn-wide" id="sdssRegionBtn" onclick="sdssSearchRegion()">Search Region</button>
+                            </div>
+                        </div>
+
+                        <!-- Results List -->
+                        <div class="sdss-results-wrap" id="sdssResultsWrap" style="display:none;">
+                            <div class="sdss-results-header">
+                                <span id="sdssResultCount">0 galaxies</span>
+                            </div>
+                            <div class="sdss-results-list" id="sdssResultsList"></div>
+                        </div>
+
+                        <!-- Loading skeleton -->
+                        <div class="sdss-loading hidden" id="sdssLoading">
+                            <div class="sdss-skeleton"></div>
+                            <div class="sdss-skeleton"></div>
+                            <div class="sdss-skeleton short"></div>
+                        </div>
+
+                        <!-- Error toast -->
+                        <div class="sdss-error hidden" id="sdssError">
+                            <span id="sdssErrorText"></span>
                         </div>
                     </div>
                 </div>
+
 
                 <form id="predictForm">
                     <div class="input-group">
@@ -193,7 +273,7 @@
                             </svg>
                             Ground Truth Comparison
                         </div>
-                        <div class="truth-grid">
+                        <div class="truth-grid" id="truthGrid">
                             <div class="truth-col">
                                 <div class="truth-col-title">Stellar Mass</div>
                                 <div class="truth-row">
@@ -224,6 +304,13 @@
                                     <span class="truth-key">Error</span>
                                     <span class="truth-val truth-metric-err" id="sfrErrVal">—</span>
                                 </div>
+                            </div>
+                        </div>
+                        <div class="truth-unavailable hidden" id="truthUnavailable">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                            <div class="truth-unavailable-text">
+                                <strong>No spectroscopic reference available</strong>
+                                <span>Prediction validated against SDSS DR8 benchmark (RMSE: 0.17 dex mass, 0.34 dex SFR)</span>
                             </div>
                         </div>
                     </div>
@@ -334,7 +421,11 @@
                         <div class="tab-panel" id="panel-evolution" role="tabpanel" aria-labelledby="tab-evolution">
                             <div class="tab-panel-inner">
                                 <h4 class="tab-panel-title">Galaxy Evolution Context</h4>
-                                <div class="chart-wrap">
+                                <div class="chart-wrap" style="position: relative;">
+                                    <div id="evolutionLoading" class="chart-loading hidden">
+                                        <div class="sdss-spinner"></div>
+                                        <span>Fetching SDSS Main Sequence...</span>
+                                    </div>
                                     <canvas id="evolutionChart" height="280"></canvas>
                                 </div>
                                 <p class="chart-caption">
