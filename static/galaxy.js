@@ -16,6 +16,16 @@ Chart.defaults.font.size = 12;
 
 // ── Preset Loading Logic Removed ──
 
+// ── Reset truth data if user manually edits fields ──
+document.getElementById('predictForm').addEventListener('input', (e) => {
+    if (e.target.tagName === 'INPUT') {
+        window.trueMass = undefined;
+        window.trueSfr = undefined;
+        window.sdssTarget = null;
+        document.querySelectorAll('.sdss-galaxy-card').forEach(c => c.classList.remove('selected'));
+    }
+});
+
 // ── Form submission ──
 document.getElementById('predictForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -89,37 +99,72 @@ function displayResults(r) {
     document.getElementById('emptyState').classList.add('hidden');
     document.getElementById('resultsContent').classList.remove('hidden');
 
+    // ── Target Profile ──
+    const targetProfile = document.getElementById('targetProfile');
+    const targetImage = document.getElementById('targetImage');
+    const targetFallback = document.getElementById('targetFallback');
+
+    if (window.sdssTarget) {
+        targetProfile.classList.remove('hidden');
+        const ra = window.sdssTarget.ra;
+        const dec = window.sdssTarget.dec;
+        targetImage.src = `https://skyserver.sdss.org/dr18/SkyserverWS/ImgCutout/getjpeg?ra=${ra}&dec=${dec}&width=400&height=400&scale=0.2`;
+        targetImage.classList.remove('hidden');
+        targetFallback.classList.add('hidden');
+        
+        document.getElementById('targetObjId').textContent = window.sdssTarget.objID || '—';
+        document.getElementById('targetZ').textContent = window.sdssTarget.z ? window.sdssTarget.z.toFixed(4) : '—';
+        document.getElementById('targetSource').textContent = window.sdssSource || 'SDSS DR18';
+    } else {
+        targetProfile.classList.remove('hidden');
+        targetImage.classList.add('hidden');
+        targetFallback.classList.remove('hidden');
+        document.getElementById('targetObjId').textContent = 'Manual Input';
+        document.getElementById('targetZ').textContent = document.getElementById('redshift').value || '—';
+        document.getElementById('targetSource').textContent = 'User Defined';
+    }
+
     // ── KPI Metrics ──
     animateValue('massVal', r.mass_log_mean, 2);
     animateValue('sfrVal', r.sfr_log_mean, 2);
     document.getElementById('massUncertainty').textContent = `± ${r.mass_log_std.toFixed(2)}`;
     document.getElementById('sfrUncertainty').textContent = `± ${r.sfr_log_std.toFixed(2)}`;
 
-    // ── Truth comparison (demo galaxies only) ──
+    // ── Truth comparison (SDSS galaxies with MPA-JHU ground truth) ──
     const truthBar = document.getElementById('truthBar');
+    const truthGrid = document.getElementById('truthGrid');
+    const truthUnavail = document.getElementById('truthUnavailable');
     if (window.trueMass !== undefined && window.trueSfr !== undefined) {
         truthBar.classList.remove('hidden');
-        const massErr = Math.abs(window.trueMass - r.mass_log_mean);
-        const sfrErr = Math.abs(window.trueSfr - r.sfr_log_mean);
+        if (window.trueMass !== null && window.trueSfr !== null) {
+            // Ground truth available — show full comparison
+            if (truthGrid) truthGrid.classList.remove('hidden');
+            if (truthUnavail) truthUnavail.classList.add('hidden');
 
-        document.getElementById('trueMassVal').textContent = window.trueMass.toFixed(2);
-        document.getElementById('predMassVal').textContent = r.mass_log_mean.toFixed(2);
-        document.getElementById('trueSfrVal').textContent = window.trueSfr.toFixed(2);
-        document.getElementById('predSfrVal').textContent = r.sfr_log_mean.toFixed(2);
+            const massErr = Math.abs(window.trueMass - r.mass_log_mean);
+            const sfrErr = Math.abs(window.trueSfr - r.sfr_log_mean);
 
-        const massErrEl = document.getElementById('massErrVal');
-        massErrEl.textContent = `Δ${massErr.toFixed(3)}`;
-        massErrEl.className = 'truth-metric-err ' + (massErr < 0.1 ? 'good' : massErr < 0.3 ? 'warn' : 'bad');
+            document.getElementById('trueMassVal').textContent = window.trueMass.toFixed(2);
+            document.getElementById('predMassVal').textContent = r.mass_log_mean.toFixed(2);
+            document.getElementById('trueSfrVal').textContent = window.trueSfr.toFixed(2);
+            document.getElementById('predSfrVal').textContent = r.sfr_log_mean.toFixed(2);
 
-        const sfrErrEl = document.getElementById('sfrErrVal');
-        sfrErrEl.textContent = `Δ${sfrErr.toFixed(3)}`;
-        sfrErrEl.className = 'truth-metric-err ' + (sfrErr < 0.15 ? 'good' : sfrErr < 0.4 ? 'warn' : 'bad');
+            const massErrEl = document.getElementById('massErrVal');
+            massErrEl.textContent = `Δ${massErr.toFixed(3)}`;
+            massErrEl.className = 'truth-metric-err ' + (massErr < 0.1 ? 'good' : massErr < 0.3 ? 'warn' : 'bad');
 
-        // Clear after use so presets don't show truth bar
-        window.trueMass = undefined;
-        window.trueSfr = undefined;
+            const sfrErrEl = document.getElementById('sfrErrVal');
+            sfrErrEl.textContent = `Δ${sfrErr.toFixed(3)}`;
+            sfrErrEl.className = 'truth-metric-err ' + (sfrErr < 0.15 ? 'good' : sfrErr < 0.4 ? 'warn' : 'bad');
+        } else {
+            // No spectroscopic reference — hide stale grid, show message only
+            if (truthGrid) truthGrid.classList.add('hidden');
+            if (truthUnavail) truthUnavail.classList.remove('hidden');
+        }
     } else {
         truthBar.classList.add('hidden');
+        if (truthGrid) truthGrid.classList.remove('hidden');
+        if (truthUnavail) truthUnavail.classList.add('hidden');
     }
 
     // ── Quenching ──
@@ -306,6 +351,9 @@ window.addEventListener('resize', updateTabIndicator);
 // ══════════════════════
 async function renderEvolutionChart(mass, sfr) {
     const ctx = document.getElementById('evolutionChart');
+    const loadingEl = document.getElementById('evolutionLoading');
+    
+    if (loadingEl) loadingEl.classList.remove('hidden');
 
     // Fetch real SDSS main sequence data
     let mainSequence = [];
@@ -334,6 +382,7 @@ async function renderEvolutionChart(mass, sfr) {
         }
     }
 
+    if (loadingEl) loadingEl.classList.add('hidden');
     if (evolutionChart) evolutionChart.destroy();
 
     evolutionChart = new Chart(ctx, {
@@ -407,44 +456,98 @@ async function loadTrainingLoss() {
     try {
         const res = await fetch('/api/galaxy/training-loss');
         const data = await res.json();
-        const ctx = document.getElementById('lossChart').getContext('2d');
 
+        // Determine which stages actually have data
+        const hasA = data.stageA_loss && data.stageA_loss.length > 0;
+        const hasB = data.stageB_loss && data.stageB_loss.length > 0;
+        const hasC = data.stageC_loss && data.stageC_loss.length > 0;
+
+        // Compute the total timeline length (max of present stages)
+        const epochsA = hasA ? data.epochsA.length : 0;
+        const epochsB = hasB ? data.epochsB.length : 0;
+        const epochsC = hasC ? data.epochsC.length : 0;
+        const totalEpochs = Math.max(epochsA, epochsB + (hasA ? data.epochsA.length : 0), epochsC + (hasA ? data.epochsA.length : 0) + (hasB ? data.epochsB.length : 0));
+        // Actually the original logic used separate epochs per stage; better to keep them as separate spans.
+        // We'll create labels that go from 1 to total epochs across all stages (just like before).
+        // But now we only sum epochs of stages that exist.
+        const allEpochs = [];
+        if (hasA) allEpochs.push(...data.epochsA);
+        if (hasB) allEpochs.push(...data.epochsB);
+        if (hasC) allEpochs.push(...data.epochsC);
+        const totalLength = allEpochs.length; // number of x-axis labels
+
+        const datasets = [];
+
+        // Stage A — Supervised
+        if (hasA) {
+            const stageA_loss = data.stageA_loss;
+            // Pad with nulls for subsequent stages
+            const values = [...stageA_loss, ...Array(totalLength - stageA_loss.length).fill(null)];
+            datasets.push({
+                label: 'Stage A — Supervised',
+                data: values,
+                borderColor: '#22c55e',
+                backgroundColor: 'rgba(34,197,94,0.08)',
+                fill: true,
+                borderWidth: 2,
+                tension: 0.35,
+                pointRadius: 0
+            });
+        }
+
+        // Stage B — Flow NLL
+        if (hasB) {
+            const stageB_loss = data.stageB_loss;
+            const startIdx = hasA ? data.epochsA.length : 0;
+            const values = [
+                ...Array(startIdx).fill(null),
+                ...stageB_loss,
+                ...Array(totalLength - startIdx - stageB_loss.length).fill(null)
+            ];
+            datasets.push({
+                label: 'Stage B — Flow NLL',
+                data: values,
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245,158,11,0.08)',
+                fill: true,
+                borderWidth: 2,
+                tension: 0.35,
+                pointRadius: 0
+            });
+        }
+
+        // Stage C — Physics Joint (only if data exists)
+        if (hasC) {
+            const stageC_loss = data.stageC_loss;
+            const startIdx = (hasA ? data.epochsA.length : 0) + (hasB ? data.epochsB.length : 0);
+            const values = [
+                ...Array(startIdx).fill(null),
+                ...stageC_loss,
+                ...Array(totalLength - startIdx - stageC_loss.length).fill(null)
+            ];
+            datasets.push({
+                label: 'Stage C — Physics Joint',
+                data: values,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59,130,246,0.08)',
+                fill: true,
+                borderWidth: 2,
+                tension: 0.35,
+                pointRadius: 0
+            });
+        }
+
+        if (datasets.length === 0) {
+            console.warn('No training loss data available.');
+            return;
+        }
+
+        const ctx = document.getElementById('lossChart').getContext('2d');
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: Array.from({ length: data.epochsA.length + data.epochsB.length + data.epochsC.length }, (_, i) => i + 1),
-                datasets: [
-                    {
-                        label: 'Stage A — Supervised',
-                        data: [...data.stageA_loss, ...Array(data.epochsB.length + data.epochsC.length).fill(null)],
-                        borderColor: '#22c55e',
-                        backgroundColor: 'rgba(34,197,94,0.08)',
-                        fill: true,
-                        borderWidth: 2,
-                        tension: 0.35,
-                        pointRadius: 0
-                    },
-                    {
-                        label: 'Stage B — Flow NLL',
-                        data: [...Array(data.epochsA.length).fill(null), ...data.stageB_loss, ...Array(data.epochsC.length).fill(null)],
-                        borderColor: '#f59e0b',
-                        backgroundColor: 'rgba(245,158,11,0.08)',
-                        fill: true,
-                        borderWidth: 2,
-                        tension: 0.35,
-                        pointRadius: 0
-                    },
-                    {
-                        label: 'Stage C — Physics Joint',
-                        data: [...Array(data.epochsA.length + data.epochsB.length).fill(null), ...data.stageC_loss],
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59,130,246,0.08)',
-                        fill: true,
-                        borderWidth: 2,
-                        tension: 0.35,
-                        pointRadius: 0
-                    }
-                ]
+                labels: Array.from({ length: totalLength }, (_, i) => i + 1),
+                datasets: datasets
             },
             options: {
                 responsive: true,
@@ -636,62 +739,171 @@ requestAnimationFrame(() => {
 });
 
 // ══════════════════════
-//  DEMO GALAXY LOADER
+//  SDSS LIVE EXPLORER
 // ══════════════════════
-let currentDemoDataset = 'test';
 
-async function loadDemoList(dataset) {
-    const selector = document.getElementById('demoSelector');
-    selector.innerHTML = '<option value="">Select a real galaxy…</option>';
-
-    try {
-        const res = await fetch(`/api/galaxy/demo-galaxies?dataset=${dataset}&n=50`);
-        const data = await res.json();
-
-        data.galaxies.forEach((g, index) => {
-            const opt = document.createElement('option');
-            opt.value = JSON.stringify(g);
-            opt.textContent = `Galaxy #${index + 1}  ·  logM = ${g.true_mass.toFixed(2)}  ·  logSFR = ${g.true_sfr.toFixed(2)}`;
-            selector.appendChild(opt);
-        });
-    } catch (err) {
-        console.warn('Demo galaxies unavailable:', err.message);
-    }
-}
-
-function loadDemoGalaxy(galaxyData) {
-    const g = typeof galaxyData === 'string' ? JSON.parse(galaxyData) : galaxyData;
-    const f = g.features;
-
-    document.getElementById('u').value = f[0].toFixed(4);
-    document.getElementById('g').value = f[1].toFixed(4);
-    document.getElementById('r').value = f[2].toFixed(4);
-    document.getElementById('i').value = f[3].toFixed(4);
-    document.getElementById('z').value = f[4].toFixed(4);
-    document.getElementById('redshift').value = f[9].toFixed(6);
-
-    // Store truth for comparison after prediction
-    window.trueMass = g.true_mass;
-    window.trueSfr = g.true_sfr;
-}
-
-// Demo toggle buttons
-document.querySelectorAll('.demo-toggle-btn').forEach(btn => {
+// ── Tab switching ──
+document.querySelectorAll('.sdss-tab').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('.demo-toggle-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.sdss-tab').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        currentDemoDataset = btn.dataset.dataset;
-        loadDemoList(currentDemoDataset);
+        document.querySelectorAll('.sdss-panel').forEach(p => p.classList.remove('active'));
+        const panel = document.getElementById('sdss' + btn.dataset.sdssTab.charAt(0).toUpperCase() + btn.dataset.sdssTab.slice(1));
+        if (panel) panel.classList.add('active');
     });
 });
 
-// Auto-load galaxy when selected from dropdown
-document.getElementById('demoSelector').addEventListener('change', (e) => {
-    if (e.target.value) {
-        loadDemoGalaxy(e.target.value);
+// ── SDSS loading / error helpers ──
+function sdssSetLoading(show) {
+    const el = document.getElementById('sdssLoading');
+    if (show) {
+        el.classList.remove('hidden');
+        const wrap = document.getElementById('sdssResultsWrap');
+        if (wrap) wrap.style.display = 'none';
+    } else {
+        el.classList.add('hidden');
     }
+    document.querySelectorAll('.sdss-btn').forEach(b => b.disabled = show);
+}
+
+function sdssShowError(msg) {
+    const el = document.getElementById('sdssError');
+    document.getElementById('sdssErrorText').textContent = msg;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 6000);
+}
+
+// ── Render galaxy cards ──
+function sdssRenderResults(galaxies) {
+    const wrap = document.getElementById('sdssResultsWrap');
+    const list = document.getElementById('sdssResultsList');
+    const countEl = document.getElementById('sdssResultCount');
+
+    list.innerHTML = '';
+    if (!galaxies || galaxies.length === 0) {
+        wrap.style.display = '';
+        countEl.textContent = '0 galaxies';
+        list.innerHTML = `
+            <div class="sdss-no-results">
+                No galaxies found. Try adjusting your search parameters.
+            </div>
+        `;
+        return;
+    }
+    wrap.style.display = '';
+    countEl.textContent = `${galaxies.length} galax${galaxies.length === 1 ? 'y' : 'ies'}`;
+
+    galaxies.forEach((g, idx) => {
+        const card = document.createElement('div');
+        card.className = 'sdss-galaxy-card';
+        const cutoutUrl = `https://skyserver.sdss.org/dr18/SkyserverWS/ImgCutout/getjpeg?ra=${g.ra}&dec=${g.dec}&width=80&height=80&scale=0.2`;
+        const massText = g.true_mass != null ? `logM=${g.true_mass.toFixed(2)}` : 'logM=—';
+        const sfrText = g.true_sfr != null ? `SFR=${g.true_sfr.toFixed(2)}` : 'SFR=—';
+        card.innerHTML = `
+            <div class="sdss-card-thumb-wrap loading">
+                <img class="sdss-card-thumb" src="${cutoutUrl}" alt="Galaxy cutout" loading="lazy" 
+                     onload="this.parentElement.classList.remove('loading')"
+                     onerror="this.parentElement.style.display='none'">
+            </div>
+            <div class="sdss-card-info">
+                <div class="sdss-card-id">${g.objID}</div>
+                <div class="sdss-card-meta">z=${g.redshift.toFixed(4)} · ${massText} · ${sfrText}</div>
+            </div>
+            <button type="button" class="sdss-card-select" title="Select this galaxy">▶</button>
+        `;
+        card.querySelector('.sdss-card-select').addEventListener('click', () => sdssSelectGalaxy(g));
+        card.addEventListener('dblclick', () => sdssSelectGalaxy(g));
+        list.appendChild(card);
+    });
+}
+
+// ── Select a galaxy → populate form ──
+function sdssSelectGalaxy(g) {
+    document.getElementById('u').value = g.u.toFixed(4);
+    document.getElementById('g').value = g.g.toFixed(4);
+    document.getElementById('r').value = g.r.toFixed(4);
+    document.getElementById('i').value = g.i.toFixed(4);
+    document.getElementById('z').value = g.z_mag.toFixed(4);
+    document.getElementById('redshift').value = g.redshift.toFixed(6);
+
+    // Store ground truth (may be null)
+    window.trueMass = g.true_mass;
+    window.trueSfr = g.true_sfr;
+    window.sdssSource = g.source || 'SDSS DR18';
+    window.sdssTarget = { ra: g.ra, dec: g.dec, objID: g.objID, z: g.redshift };
+
+    // Highlight selected card
+    document.querySelectorAll('.sdss-galaxy-card').forEach(c => c.classList.remove('selected'));
+    event && event.target && event.target.closest('.sdss-galaxy-card')?.classList.add('selected');
+}
+
+// ── Search ──
+async function sdssDoSearch() {
+    const query = document.getElementById('sdssQuery').value.trim();
+    if (!query) return;
+    sdssSetLoading(true);
+    try {
+        const res = await fetch(`/api/galaxy/sdss/search?query=${encodeURIComponent(query)}`);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        sdssRenderResults(data.galaxy ? [data.galaxy] : []);
+    } catch (err) {
+        sdssShowError(err.message);
+    } finally {
+        sdssSetLoading(false);
+    }
+}
+
+// ── Random ──
+async function sdssLoadRandom() {
+    const n = document.getElementById('sdssRandomN').value;
+    const zMin = document.getElementById('sdssZMin').value;
+    const zMax = document.getElementById('sdssZMax').value;
+    sdssSetLoading(true);
+    try {
+        const res = await fetch(`/api/galaxy/sdss/random?n=${n}&z_min=${zMin}&z_max=${zMax}`);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        sdssRenderResults(data.galaxies || []);
+    } catch (err) {
+        sdssShowError(err.message);
+    } finally {
+        sdssSetLoading(false);
+    }
+}
+
+// ── Region ──
+async function sdssSearchRegion() {
+    const ra = document.getElementById('sdssRA').value;
+    const dec = document.getElementById('sdssDec').value;
+    const radius = document.getElementById('sdssRadius').value;
+    if (!ra || !dec) { sdssShowError('Enter RA and Dec coordinates.'); return; }
+    sdssSetLoading(true);
+    try {
+        const res = await fetch(`/api/galaxy/sdss/region?ra=${ra}&dec=${dec}&radius=${radius}`);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        sdssRenderResults(data.galaxies || []);
+    } catch (err) {
+        sdssShowError(err.message);
+    } finally {
+        sdssSetLoading(false);
+    }
+}
+
+// Enter key triggers search
+document.getElementById('sdssQuery')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); sdssDoSearch(); }
 });
 
-// Load data on startup
-loadDemoList(currentDemoDataset);
+// ── Init ──
 loadRFMetrics();
