@@ -283,19 +283,13 @@ async def get_training_loss():
 
     stageA = history.get("stageA", {})
     stageB = history.get("stageB", {})
-    stageC = history.get("stageC", {})
 
     return {
         "epochsA": stageA.get("epoch", []),
         "epochsB": stageB.get("epoch", []),
-        "epochsC": stageC.get("epoch", []),
 
         "stageA_loss": stageA.get("train_loss", []),
-        "stageB_loss": stageB.get("flow_nll", []),
-        "stageC_loss": stageC.get("train_loss", []),
-
-        "total_loss": stageC.get("train_loss", []),
-        "physics_loss": stageC.get("train_loss", [])
+        "stageB_loss": stageB.get("flow_nll", [])
     }
 
 
