@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Vanguard — Advanced Astrophysics Research Platform</title>
+    <meta name="description"
+        content="Cosmic Vanguard unifies cutting-edge machine learning tools for galaxy property prediction, quasar light curve forecasting, and stellar population characterization.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="cv-nav" id="mainNav">
+        <div class="nav-inner">
+            <a href="/" class="nav-brand">
+                <span class="brand-icon">◆</span>
+                Cosmic<span class="brand-accent">Vanguard</span>
+            </a>
+            <div class="nav-links">
+                <a href="/galaxy" class="nav-link">GalaxyPlayground</a>
+                <a href="/quasar" class="nav-link">QuasarWatch</a>
+                <a href="/starforge" class="nav-link">StarForge</a>
+                <a href="/starcharacterizer" class="nav-link">StarCharacterizer</a>
+                <a href="/transient" class="nav-link">TransientHunter</a>
+                <a href="/contact" class="nav-link nav-link-cta">Apply for Grant</a>
+            </div>
+            <button class="nav-toggle" id="navToggle" aria-label="Menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-bg">
+            <div class="hero-orb orb-1"></div>
+            <div class="hero-orb orb-2"></div>
+            <div class="hero-orb orb-3"></div>
+        </div>
+        <div class="hero-content">
+            <div class="hero-badge">Research Platform</div>
+            <h1 class="hero-title">
+                Cosmic<span class="hero-accent">Vanguard</span>
+            </h1>
+            <p class="hero-subtitle">
+                Unified astrophysics research platform powered by state-of-the-art machine learning.
+                Predict galaxy properties, forecast quasar variability, and characterize stellar populations
+                — all in one place.
+            </p>
+            <div class="hero-actions">
+                <a href="#modules" class="btn-hero-primary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    Explore Modules
+                </a>
+                <a href="/contact" class="btn-hero-secondary">Request Access</a>
+            </div>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <span class="stat-value">4</span>
+                    <span class="stat-label">Research Modules</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="hero-stat">
+                    <span class="stat-value">7+</span>
+                    <span class="stat-label">ML Models</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="hero-stat">
+                    <span class="stat-value">SDSS</span>
+                    <span class="stat-label">Data Source</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Module Cards -->
+    <section class="modules-section" id="modules">
+        <div class="section-container">
+            <div class="section-header">
+                <h2 class="section-title">Research Modules</h2>
+                <p class="section-desc">Each module addresses a distinct challenge in modern observational astrophysics,
+                    leveraging purpose-built neural network architectures.</p>
+            </div>
+
+            <div class="modules-grid">
+                <!-- GalaxyPlayground -->
+                <div class="module-card module-galaxy">
+                    <div class="module-icon-wrap">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10" />
+                            <path
+                                d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                            <line x1="2" y1="12" x2="22" y2="12" />
+                        </svg>
+                    </div>
+                    <div class="module-badge">Physics-Informed Neural Networks</div>
+                    <h3 class="module-title">GalaxyPlayground</h3>
+                    <p class="module-desc">
+                        Predict stellar mass, star formation rate, and quenching probability from SDSS photometry
+                        using a Physics-Informed Neural Network with normalizing flow-based uncertainty quantification.
+                    </p>
+                    <div class="module-features">
+                        <span class="feature-tag">PINN</span>
+                        <span class="feature-tag">Normalizing Flows</span>
+                        <span class="feature-tag">Random Forest</span>
+                        <span class="feature-tag">Saliency Maps</span>
+                    </div>
+                    <a href="/galaxy" class="module-launch" id="launchGalaxy">
+                        Launch Module
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                            <polyline points="12 5 19 12 12 19" />
+                        </svg>
+                    </a>
+                </div>
+
+                <!-- QuasarWatch -->
+                <div class="module-card module-quasar">
+                    <div class="module-icon-wrap">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                        </svg>
+                    </div>
+                    <div class="module-badge">Temporal Deep Learning</div>
+                    <h3 class="module-title">QuasarWatch</h3>
+                    <p class="module-desc">
+                        Forecast quasar brightness variability using the UAT-CTGRU architecture —
+                        an Uncertainty-Aware Temporal Continuous-Time GRU designed for irregularly sampled
+                        astronomical time series.
+                    </p>
+                    <div class="module-features">
+                        <span class="feature-tag">UAT-CTGRU</span>
+                        <span class="feature-tag">Transformer</span>
+                        <span class="feature-tag">Temporal Attention</span>
+                        <span class="feature-tag">Uncertainty</span>
+                    </div>
+                    <a href="/quasar" class="module-launch" id="launchQuasar">
+                        Launch Module
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                            <polyline points="12 5 19 12 12 19" />
+                        </svg>
+                    </a>
+                </div>
+
+                <!-- StarForge -->
+                <div class="module-card module-starforge">
+                    <div class="module-icon-wrap">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <polygon
+                                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                    </div>
+                    <div class="module-badge">Self-Supervised Learning</div>
+                    <h3 class="module-title">StarForge</h3>
+                    <p class="module-desc">
+                        Characterize stellar populations within galaxies using a Multi-Task Self-Supervised Learning
+                        framework. Decomposes galaxies into young, intermediate, and old stellar fractions
+                        from photometric data.
+                    </p>
+                    <div class="module-features">
+                        <span class="feature-tag">Multi-Task SSL</span>
+                        <span class="feature-tag">Latent Encoding</span>
+                        <span class="feature-tag">Population Fractions</span>
+                        <span class="feature-tag">71.7× Improvement</span>
+                    </div>
+                    <a href="/starforge" class="module-launch" id="launchStarForge">
+                        Launch Module
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                            <polyline points="12 5 19 12 12 19" />
+                        </svg>
+                    </a>
+                </div>
+
+                <!-- StarCharacterizer -->
+                <div class="module-card module-starcharacterizer">
+                    <div class="module-icon-wrap">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            <line x1="12" y1="12" x2="12" y2="17.77" />
+                            <line x1="5" y1="5" x2="9" y2="9" />
+                            <line x1="19" y1="5" x2="15" y2="9" />
+                        </svg>
+                    </div>
+                    <div class="module-badge">Split-VAE · Population Synthesis</div>
+                    <h3 class="module-title">StarCharacterizer</h3>
+                    <p class="module-desc">
+                        Decompose galaxies into young, intermediate, and old stellar population fractions
+                        from photometric colour indices using a disentangled Split-VAE with redshift-invariant
+                        latent encoding.
+                    </p>
+                    <div class="module-features">
+                        <span class="feature-tag">Split-VAE</span>
+                        <span class="feature-tag">Population Fractions</span>
+                        <span class="feature-tag">Colour Indices</span>
+                        <span class="feature-tag">Latent Space</span>
+                    </div>
+                    <a href="/starcharacterizer" class="module-launch" id="launchStarCharacterizer">
+                        Launch Module
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                            <polyline points="12 5 19 12 12 19" />
+                        </svg>
+                    </a>
+                </div>
+
+                <!-- TransientHunter -->
+                <div class="module-card module-transient">
+                    <div class="module-icon-wrap">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <path
+                                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                            </path>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                        </svg>
+                    </div>
+                    <div class="module-badge">Contrastive Learning</div>
+                    <h3 class="module-title">TransientHunter</h3>
+                    <p class="module-desc">
+                        Classify astronomical transients from photometric time series using supervised contrastive
+                        learning.
+                        Compare against an autoencoder baseline to understand representational power.
+                    </p>
+                    <div class="module-features">
+                        <span class="feature-tag">Contrastive Learning</span>
+                        <span class="feature-tag">Time Series</span>
+                        <span class="feature-tag">Supernovae</span>
+                        <span class="feature-tag">LSTM Attention</span>
+                    </div>
+                    <a href="/transient" class="module-launch" id="launchTransient">
+                        Launch Module
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                            <polyline points="12 5 19 12 12 19" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section class="about-section">
+        <div class="section-container">
+            <div class="about-grid">
+                <div class="about-text">
+                    <h2 class="section-title">About Cosmic Vanguard</h2>
+                    <p>
+                        Cosmic Vanguard is an integrated research platform that brings together multiple
+                        state-of-the-art machine learning approaches for astronomical analysis. Built for
+                        researchers, universities, and institutes working at the frontier of observational
+                        astrophysics.
+                    </p>
+                    <p>
+                        Each module represents a distinct research contribution, addressing real-world challenges
+                        in galaxy evolution, quasar variability, and stellar population synthesis using
+                        advanced neural network architectures.
+                    </p>
+                    <div class="about-cta">
+                        <a href="/contact" class="btn-hero-primary">
+                            Apply for Research Grant
+                        </a>
+                        <a href="/contact" class="btn-hero-secondary">
+                            Request a Quote
+                        </a>
+                    </div>
+                </div>
+                <div class="about-features">
+                    <div class="about-feature">
+                        <div class="about-feature-icon">🔬</div>
+                        <div>
+                            <strong>Physics-Informed</strong>
+                            <p>Models encode physical laws and astrophysical priors for scientifically valid
+                                predictions.</p>
+                        </div>
+                    </div>
+                    <div class="about-feature">
+                        <div class="about-feature-icon">📊</div>
+                        <div>
+                            <strong>Uncertainty-Aware</strong>
+                            <p>Calibrated uncertainty estimates enable reliable confidence intervals for all
+                                predictions.</p>
+                        </div>
+                    </div>
+                    <div class="about-feature">
+                        <div class="about-feature-icon">⚡</div>
+                        <div>
+                            <strong>Real-Time Inference</strong>
+                            <p>Optimized models deliver predictions in seconds, enabling interactive exploration.</p>
+                        </div>
+                    </div>
+                    <div class="about-feature">
+                        <div class="about-feature-icon">🌐</div>
+                        <div>
+                            <strong>SDSS-Calibrated</strong>
+                            <p>Trained and validated on real Sloan Digital Sky Survey data for production-grade
+                                accuracy.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="cv-footer">
+        <div class="section-container">
+            <div class="footer-inner">
+                <div class="footer-brand">
+                    <span class="brand-icon">◆</span> Cosmic<span class="brand-accent">Vanguard</span>
+                    <p class="footer-tagline">Advanced Astrophysics Research Platform</p>
+                </div>
+                <div class="footer-links">
+                    <a href="/galaxy">GalaxyPlayground</a>
+                    <a href="/quasar">QuasarWatch</a>
+                    <a href="/starforge">StarForge</a>
+                    <a href="/starcharacterizer">StarCharacterizer</a>
+                    <a href="/transient">TransientHunter</a>
+                    <a href="/contact">Contact</a>
+                </div>
+                <div class="footer-copy">
+                    © 2026 Cosmic Vanguard · All rights reserved
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile nav toggle
+        const navToggle = document.getElementById('navToggle');
+        const navLinks = document.querySelector('.nav-links');
+        navToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('open');
+            navToggle.classList.toggle('open');
+        });
+
+        // Scroll nav background
+        window.addEventListener('scroll', () => {
+            const nav = document.getElementById('mainNav');
+            if (window.scrollY > 40) nav.classList.add('scrolled');
+            else nav.classList.remove('scrolled');
+        });
+
+        // Smooth scroll to modules
+        document.querySelectorAll('a[href^="#"]').forEach(a => {
+            a.addEventListener('click', e => {
+                e.preventDefault();
+                const target = document.querySelector(a.getAttribute('href'));
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    </script>
+</body>
+
+</html>
