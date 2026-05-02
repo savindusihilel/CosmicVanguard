@@ -1662,6 +1662,18 @@ input[type="number"] {
     scrollbar-color: rgba(255,255,255,0.1) transparent;
 }
 
+.sdss-no-results {
+    padding: 1.5rem 1rem;
+    text-align: center;
+    color: var(--text-3);
+    font-size: 0.8rem;
+    background: rgba(0,0,0,0.12);
+    border: 1px dashed var(--border-subtle);
+    border-radius: var(--radius-sm);
+    margin: 0.5rem 0;
+    line-height: 1.5;
+}
+
 /* Galaxy cards */
 .sdss-galaxy-card {
     display: flex;

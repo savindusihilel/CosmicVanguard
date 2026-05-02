@@ -750,7 +750,13 @@ function sdssRenderResults(galaxies) {
 
     list.innerHTML = '';
     if (!galaxies || galaxies.length === 0) {
-        wrap.style.display = 'none';
+        wrap.style.display = '';
+        countEl.textContent = '0 galaxies';
+        list.innerHTML = `
+            <div class="sdss-no-results">
+                No galaxies found. Try adjusting your search parameters.
+            </div>
+        `;
         return;
     }
     wrap.style.display = '';
