@@ -763,7 +763,11 @@ function sdssRenderResults(galaxies) {
         const massText = g.true_mass != null ? `logM=${g.true_mass.toFixed(2)}` : 'logM=—';
         const sfrText = g.true_sfr != null ? `SFR=${g.true_sfr.toFixed(2)}` : 'SFR=—';
         card.innerHTML = `
-            <img class="sdss-card-thumb" src="${cutoutUrl}" alt="Galaxy cutout" loading="lazy" onerror="this.style.display='none'">
+            <div class="sdss-card-thumb-wrap loading">
+                <img class="sdss-card-thumb" src="${cutoutUrl}" alt="Galaxy cutout" loading="lazy" 
+                     onload="this.parentElement.classList.remove('loading')"
+                     onerror="this.parentElement.style.display='none'">
+            </div>
             <div class="sdss-card-info">
                 <div class="sdss-card-id">${g.objID}</div>
                 <div class="sdss-card-meta">z=${g.redshift.toFixed(4)} · ${massText} · ${sfrText}</div>
