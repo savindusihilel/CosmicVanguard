@@ -17,48 +17,42 @@ jobs:
         with:
           lfs: true
 
-      - name: Setup Miniconda
-        uses: conda-incubator/setup-miniconda@v3
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
         with:
-          auto-update-conda: true
-          miniforge-variant: Miniforge3
-          activate-environment: rp
-          environment-file: environment.yml
-          use-mamba: true
+          python-version: '3.12'
 
-      - name: Verify single OpenMP runtime
-        shell: bash -el {0}
+      - name: Create virtual environment and install dependencies
         run: |
-          conda activate rp
-          echo "=== Checking for duplicate OpenMP runtimes ==="
-          count=$(find $CONDA_PREFIX -name "libiomp5*.so" -o -name "libomp*.so" 2>/dev/null | tee /dev/stderr | wc -l)
-          echo "Found $count OpenMP libraries"
-          # Just warn, don't fail — pip's tensorflow-cpu may bundle one internally
-          if [ "$count" -gt 2 ]; then
-            echo "WARNING: Multiple OpenMP runtimes detected — review dependencies"
-          fi
-
-      - name: Create portable env in antenv/
-        shell: bash -el {0}
-        run: |
-          conda activate rp
-          conda pack -p $CONDA_PREFIX -o antenv.tar.gz --ignore-editable-packages
-          mkdir -p antenv
-          tar -xzf antenv.tar.gz -C antenv
-          rm antenv.tar.gz
-          # Fix up prefixes for portability
+          python -m venv antenv
           source antenv/bin/activate
-          conda-unpack 2>/dev/null || true
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify no OpenMP conflict
+        run: |
+          source antenv/bin/activate
+          python -c "
+          import os
+          os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
+          import torch; print('PyTorch:', torch.__version__)
+          import tensorflow as tf; print('TensorFlow:', tf.__version__)
+          print('Both loaded successfully — no OpenMP conflict')
+          "
+
+      - name: Zip artifact for deployment
+        run: |
+          zip release.zip ./* -r \
+            -x ".git/*" \
+            -x "__pycache__/*" \
+            -x ".pytest_cache/*" \
+            -x ".github/*"
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: |
-            .
-            !.git/**
-            !__pycache__/**
-            !.pytest_cache/**
+          path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -72,6 +66,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: python-app
+
+      - name: Unzip artifact
+        run: unzip release.zip
 
       - name: Login to Azure
         uses: azure/login@v2
