@@ -692,3 +692,30 @@
 
 /* ── Invariance Panel ──────────────────────────────────── */
 .invariance-panel { background:var(--surface-2,rgba(255,255,255,0.04)); border-radius:10px; padding:16px; border:1px solid rgba(139,92,246,0.18); }
+
+/* ═══════════════════════════════════════════════════════
+   ETI ARC GAUGE + STATE BADGES
+   ═══════════════════════════════════════════════════════ */
+.sc-eti-block { display:flex; align-items:center; gap:20px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:16px; margin-bottom:14px; }
+.sc-eti-gauge-wrap { flex-shrink:0; text-align:center; }
+.sc-eti-svg { width:130px; height:auto; }
+.sc-eti-track { stroke:rgba(255,255,255,0.08); }
+.sc-eti-fill  { stroke:#34d399; stroke-dasharray:0 189; }
+.sc-eti-num   { font-size:15px; font-weight:700; font-family:'JetBrains Mono',monospace; fill:#e2e8f0; }
+.sc-eti-sub   { font-size:8px;  fill:#64748b; letter-spacing:0.12em; font-weight:600; }
+.sc-eti-label { font-size:0.63rem; color:var(--text-3,#64748b); letter-spacing:0.06em; margin-top:4px; text-transform:uppercase; }
+.sc-eti-right { flex:1; min-width:0; }
+
+/* State badge */
+.sc-state-badge { display:inline-block; padding:5px 14px; border-radius:20px; font-size:0.72rem; font-weight:700; letter-spacing:0.12em; margin-bottom:8px; animation:sc-pulse 2.5s ease-in-out infinite; }
+.eti-stable       { background:rgba(52,211,153,0.12); border:1px solid #34d399; color:#34d399; }
+.eti-mixed        { background:rgba(96,165,250,0.12); border:1px solid #60a5fa; color:#60a5fa; }
+.eti-green-valley { background:rgba(16,185,129,0.12); border:1px solid #10b981; color:#10b981; }
+.eti-transitional { background:rgba(251,191,36,0.12); border:1px solid #fbbf24; color:#fbbf24; }
+@keyframes sc-pulse { 0%,100%{opacity:1} 50%{opacity:0.72} }
+
+/* H readout */
+.sc-h-readout { font-family:'JetBrains Mono',monospace; font-size:0.75rem; color:var(--text-2,#94a3b8); margin-bottom:8px; }
+
+/* State description */
+.sc-state-desc { font-size:0.71rem; color:var(--text-3,#64748b); line-height:1.6; margin:0; }
