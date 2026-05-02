@@ -699,6 +699,9 @@ async def predict_starcharacterizer(data: GalaxyInput):
         fi_arr = np.array(fi_vals, dtype=np.float64)
         if fi_arr.sum() > 0:
             fi_arr = fi_arr / fi_arr.sum()
+        else:
+            # Perfectly certain prediction — assign equal importance as fallback
+            fi_arr = np.array([0.25, 0.25, 0.25, 0.25])
         fi_pct = (fi_arr * 100.0).tolist()
 
         # Step 13 — population confidence (normalised)
@@ -763,13 +766,12 @@ async def baseline_starcharacterizer(data: GalaxyInput):
 
         scaler = _jl.load(os.path.join(d, "scaler_cosmo.pkl"))
         x_scaled = scaler.transform(x)
-        phot_slice = x_scaled[:, [0, 1, 2, 3, 4, 6, 7, 8]]
-
+        # basic_encoder was trained on all 9 features (full scaled vector)
         # Encode with baseline encoder
         basic_encoder = tf.keras.models.load_model(
             os.path.join(d, "basic_encoder.keras"), safe_mode=False
         )
-        z_enc = basic_encoder.predict(phot_slice, verbose=0)
+        z_enc = basic_encoder.predict(x_scaled, verbose=0)
 
         # GMM with temperature softening T=4.5
         basic_gmm = _jl.load(os.path.join(d, "basic_gmm.pkl"))
