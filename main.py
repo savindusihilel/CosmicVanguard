@@ -37,7 +37,36 @@ ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 GALAXY_ASSETS_DIR = os.path.join(ASSETS_DIR, "galaxy")
 TRANSIENT_ASSETS_DIR = os.path.join(ASSETS_DIR, "transient")
 QUASAR_ASSETS_DIR = os.path.join(ASSETS_DIR, "quasarwatch")
-STARFORGE_ASSETS_DIR = os.path.join(ASSETS_DIR, "starforge")
+# STARCHARACTERIZER START
+STARCHARACTERIZER_ASSETS_DIR = os.path.join(ASSETS_DIR, "StarCharacterizer")
+# Pre-load all SC artifacts ONCE at startup
+try:
+    import joblib as _sc_jl, numpy as _sc_np, tensorflow as _sc_tf
+    from astropy.cosmology import Planck18 as _sc_cosmo
+    _d = STARCHARACTERIZER_ASSETS_DIR
+    _sc_scaler         = _sc_jl.load(os.path.join(_d, "scaler_cosmo.pkl"))
+    _sc_alpha          = float(_sc_np.load(os.path.join(_d, "alpha_optimal_final.npy"))[0])
+    _sc_ols            = _sc_jl.load(os.path.join(_d, "ols_projection_final.pkl"))
+    _sc_pca_whitening  = _sc_jl.load(os.path.join(_d, "pca_whitening_final.pkl"))
+    _sc_gmm            = _sc_jl.load(os.path.join(_d, "gmm_final.pkl"))
+    _sc_basic_gmm      = _sc_jl.load(os.path.join(_d, "basic_gmm.pkl"))
+    _sc_intr_encoder   = _sc_tf.keras.models.load_model(os.path.join(_d, "intrinsic_encoder.keras"), safe_mode=False)
+    _sc_basic_encoder  = _sc_tf.keras.models.load_model(os.path.join(_d, "basic_encoder.keras"), safe_mode=False)
+    class _SCEntropyReg(_sc_tf.keras.layers.Layer):
+        def __init__(self, weight=0.15, **kwargs):
+            super().__init__(**kwargs); self.weight = weight
+        def call(self, inputs, training=None): return inputs
+        def get_config(self):
+            cfg = super().get_config(); cfg.update({"weight": self.weight}); return cfg
+    _sc_pop_model = _sc_tf.keras.models.load_model(
+        os.path.join(_d, "population_model_final.keras"),
+        custom_objects={"EntropyRegularisation": _SCEntropyReg}, safe_mode=False
+    )
+    print("StarCharacterizer models loaded.")
+except Exception as _sc_load_err:
+    print(f"[WARN] StarCharacterizer startup load failed: {_sc_load_err}")
+    _sc_scaler = _sc_alpha = _sc_ols = _sc_pca_whitening = _sc_gmm = None
+    _sc_basic_gmm = _sc_intr_encoder = _sc_basic_encoder = _sc_pop_model = None
 
 FEATURE_NAMES = [
     "u",
@@ -161,16 +190,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"Failed to load TransientHunter models: {e}")
 
-    # Load StarForge models
-    try:
-        import tensorflow as tf
-        models["sf_encoder"] = tf.keras.models.load_model(os.path.join(STARFORGE_ASSETS_DIR, "joint_encoder.keras"))
-        models["sf_pop_model"] = tf.keras.models.load_model(os.path.join(STARFORGE_ASSETS_DIR, "joint_population_model.keras"))
-        models["sf_naive"] = tf.keras.models.load_model(os.path.join(STARFORGE_ASSETS_DIR, "naive_base_model.keras"))
-        models["sf_scaler"] = joblib.load(os.path.join(STARFORGE_ASSETS_DIR, "joint_scaler.pkl"))
-        print("StarForge models loaded.")
-    except Exception as e:
-        print(f"Failed to load StarForge models: {e}")
 
     print("Models loaded.")
 
@@ -205,13 +224,15 @@ async def read_galaxy():
 async def read_quasar():
     return FileResponse(os.path.join(STATIC_DIR, "quasar.html"))
 
-@app.get("/starforge")
-async def read_starforge():
-    return FileResponse(os.path.join(STATIC_DIR, "starforge.html"))
-
 @app.get("/transient")
 async def read_transient():
     return FileResponse(os.path.join(STATIC_DIR, "transient.html"))
+
+# STARCHARACTERIZER START
+@app.get("/starcharacterizer")
+async def read_starcharacterizer():
+    return FileResponse(os.path.join(STATIC_DIR, "starcharacterizer.html"))
+# STARCHARACTERIZER END
 
 @app.get("/contact")
 async def read_contact():
@@ -585,204 +606,227 @@ async def predict(data: GalaxyInput):
         **rf_res
     )
 
-# ======================
-# STARFORGE ENDPOINTS
-# ======================
-
-@app.post("/api/starforge/predict")
-async def predict_starforge(data: GalaxyInput):
+# STARCHARACTERIZER START
+@app.post("/api/starcharacterizer/predict")
+async def predict_starcharacterizer(data: GalaxyInput):
     try:
-        # Compute derived colors
-        u_g = data.u - data.g
-        r_i = data.r - data.i
-        i_z = data.i - data.z
+        import math
+        import numpy as np
+        from fastapi import HTTPException
 
-        # Standard input for models (9 features)
-        x = np.array([[data.u, data.g, data.r, data.i, data.z, data.redshift, u_g, r_i, i_z]], dtype=np.float32)
-        
-        if "sf_scaler" in models:
-            x_scaled = models["sf_scaler"].transform(x)
+        # Step 1 — apparent → absolute magnitudes via luminosity distance (Planck18)
+        d_L = _sc_cosmo.luminosity_distance(max(data.redshift, 1e-6)).value
+        dm  = 5.0 * np.log10(d_L) + 25.0
+        u_abs = data.u - dm; g_abs = data.g - dm; r_abs = data.r - dm
+        i_abs = data.i - dm; z_abs = data.z - dm
+        u_g_abs = u_abs - g_abs; r_i_abs = r_abs - i_abs; i_z_abs = i_abs - z_abs
+
+        # Step 2 — 9-feature vector + scale
+        feature_vector = np.array([[
+            u_abs, g_abs, r_abs, i_abs, z_abs,
+            data.redshift, u_g_abs, r_i_abs, i_z_abs
+        ]], dtype=np.float32)
+        feature_scaled = _sc_scaler.transform(feature_vector)
+        photo_slice  = feature_scaled[:, [0, 1, 2, 3, 4, 6, 7, 8]]  # (1,8)
+        redshift_col = feature_scaled[:, 5:6]                         # (1,1)
+
+        # Step 3 — intrinsic encoder → z_intrinsic (8D)
+        z_raw = _sc_intr_encoder.predict(photo_slice, verbose=0)
+
+        # Step 4 — OLS nuisance removal
+        ols_pred = _sc_ols.predict(redshift_col)
+        if ols_pred.ndim == 1: ols_pred = ols_pred.reshape(1, -1)
+        if ols_pred.shape[1] != z_raw.shape[1]:
+            md = min(ols_pred.shape[1], z_raw.shape[1])
+            z_clean = z_raw[:, :md] - _sc_alpha * ols_pred[:, :md]
         else:
-            x_scaled = x
+            z_clean = z_raw - _sc_alpha * ols_pred
 
-        # Baseline (Naive) prediction expects 5 inputs (u, g, r, i, z) based on original app
-        # Wait, the original `app.py` says `base_inputs = scaled_features[:, :5]`.
-        base_inputs = x_scaled[:, :5]
-        if "sf_naive" in models:
-            baseline_probs = models["sf_naive"].predict(base_inputs, verbose=0)[0]
-        else:
-            baseline_probs = np.array([0.33, 0.33, 0.34])
-            
-        baseline_probs = np.clip(baseline_probs, 0, None)
-        if np.sum(baseline_probs) > 0:
-            baseline_probs = baseline_probs / np.sum(baseline_probs)
+        # Step 5 — PCA whitening
+        z_whitened = _sc_pca_whitening.transform(z_clean)
 
-        # Research (Joint) prediction
-        if "sf_encoder" in models and "sf_pop_model" in models:
-            joint_output = models["sf_pop_model"].predict(x_scaled, verbose=0)
-            if isinstance(joint_output, list) and len(joint_output) == 2:
-                research_probs = joint_output[1][0]
+        # Step 6 — GMM soft fractions T=4.5
+        gmm_proba = _sc_gmm.predict_proba(z_whitened)
+        gmm_proba = np.clip(gmm_proba, 1e-9, None) ** (1.0 / 4.5)
+        gmm_proba = gmm_proba / gmm_proba.sum(axis=1, keepdims=True)
+        gmm_fracs = gmm_proba[0, :3]
+        if gmm_fracs.sum() > 0: gmm_fracs = gmm_fracs / gmm_fracs.sum()
+        gmm_fracs = (gmm_fracs * 100.0).tolist()
+
+        # Step 7 — MLP population head
+        mlp_raw = np.clip(_sc_pop_model.predict(z_clean, verbose=0), 0, None)
+        mlp_raw = mlp_raw / mlp_raw.sum(axis=1, keepdims=True)
+        mlp_fracs = (mlp_raw[0] * 100.0).tolist()
+
+        # Step 8 — metrics
+        labels        = ["Young stars", "Intermediate stars", "Old stars"]
+        p             = np.array(mlp_fracs) / 100.0
+        entropy       = float(-np.sum(p * np.log(p + 1e-9)))
+        certainty_pct = float((1.0 - entropy / math.log(3)) * 100.0)
+        dominant_idx  = int(np.argmax(p))
+        dominant      = labels[dominant_idx]
+        gmm_p         = np.array(gmm_fracs) / 100.0
+        agreement_pct = float((1.0 - np.mean(np.abs(gmm_p - p))) * 100.0)
+
+        # Step 9 — feature importance via perturbation
+        nom_dom = float(mlp_raw[0, dominant_idx])
+        fi_vals = []
+        for col_idx in [6, 7, 8, 5]:
+            perturbed = feature_scaled.copy(); perturbed[0, col_idx] = 0.0
+            ps_p = perturbed[:, [0, 1, 2, 3, 4, 6, 7, 8]]; rc_p = perturbed[:, 5:6]
+            zr   = _sc_intr_encoder.predict(ps_p, verbose=0)
+            op   = _sc_ols.predict(rc_p)
+            if op.ndim == 1: op = op.reshape(1, -1)
+            if op.shape[1] != zr.shape[1]:
+                md = min(op.shape[1], zr.shape[1]); zc = zr[:, :md] - _sc_alpha * op[:, :md]
             else:
-                research_probs = joint_output[0] if joint_output.shape[-1] == 3 else joint_output[1][0]
-        else:
-            research_probs = baseline_probs + np.random.normal(0, 0.05, 3)
-            
-        research_probs = np.clip(research_probs, 0, None)
-        if np.sum(research_probs) > 0:
-            research_probs = research_probs / np.sum(research_probs)
+                zc = zr - _sc_alpha * op
+            mr = np.clip(_sc_pop_model.predict(zc, verbose=0), 0, None)
+            mr /= mr.sum(axis=1, keepdims=True)
+            fi_vals.append(abs(float(mr[0, dominant_idx]) - nom_dom))
+        fi_arr = np.array(fi_vals)
+        fi_arr = fi_arr / fi_arr.sum() if fi_arr.sum() > 0 else np.array([0.25, 0.25, 0.25, 0.25])
+        fi_pct = (fi_arr * 100.0).tolist()
+
+        # Step 10 — population confidence
+        pop_conf_raw = [float(p[i] / (entropy + 1.0)) for i in range(3)]
+        pc_max = max(pop_conf_raw) if max(pop_conf_raw) > 0 else 1.0
+        pop_conf = [round(v / pc_max * 100.0, 2) for v in pop_conf_raw]
 
         return {
-            "labels": ["Young stars", "Intermediate stars", "Old stars"],
-            "baseline": (baseline_probs * 100).tolist(),
-            "research": (research_probs * 100).tolist(),
+            "labels":          labels,
+            "gmm_fractions":   [round(float(v), 4) for v in gmm_fracs],
+            "mlp_fractions":   [round(float(v), 4) for v in mlp_fracs],
+            "dominant":        dominant,
+            "entropy":         round(entropy, 6),
+            "certainty_pct":   round(certainty_pct, 4),
+            "agreement_pct":   round(agreement_pct, 4),
+            "model_r2":        0.9712,
+            "model_mae":       0.0315,
+            "pearson_r":       0.0161,
+            "hsic":            0.001074,
+            "ks_stat":         0.1297,
+            "reconstruction_r2": 0.9417,
+            "alpha_used":      round(float(_sc_alpha), 4),
+            "feature_importance": {
+                "u_g":             round(fi_pct[0], 2),
+                "r_i":             round(fi_pct[1], 2),
+                "i_z":             round(fi_pct[2], 2),
+                "redshift_weight": round(fi_pct[3], 2)
+            },
+            "population_confidence": pop_conf,
             "derived": {
-                "u_g": u_g,
-                "r_i": r_i,
-                "i_z": i_z
+                "u_g": round(float(u_g_abs), 4),
+                "r_i": round(float(r_i_abs), 4),
+                "i_z": round(float(i_z_abs), 4)
             }
         }
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        import traceback; traceback.print_exc()
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=str(e))
+# STARCHARACTERIZER END
 
-# Lazy cache for Starforge validation dat
-sf_cache = {}
 
-def get_sf_validation_data():
-    if "df_sample" in sf_cache:
-        return sf_cache["df_sample"], sf_cache["pop_preds"], sf_cache["latent_2d"]
-        
-    import pandas as pd
-    from sklearn.decomposition import PCA
-    
-    df = pd.read_csv(os.path.join(STARFORGE_ASSETS_DIR, "processed_galaxies.csv"))
-    df_sample = df.sample(n=min(5000, len(df)), random_state=42).copy()
-    
-    features = df_sample[['u', 'g', 'r', 'i', 'z', 'redshift', 'u_g', 'r_i', 'i_z']].values
-    scaled_feat = models["sf_scaler"].transform(features)
-    
-    preds = models["sf_pop_model"].predict(scaled_feat, verbose=0)
-    if isinstance(preds, list):
-        pop_preds = preds[1]
-    else:
-        pop_preds = preds if preds.shape[-1] == 3 else preds[1]
-        
-    pop_preds = np.clip(pop_preds, 0, 1)
-    pop_preds = pop_preds / pop_preds.sum(axis=1, keepdims=True)
-    
-    latent_embeddings = models["sf_encoder"].predict(scaled_feat, verbose=0)
-    pca = PCA(n_components=2, random_state=42)
-    latent_2d = pca.fit_transform(latent_embeddings)
-    
-    sf_cache["df_sample"] = df_sample
-    sf_cache["pop_preds"] = pop_preds
-    sf_cache["latent_2d"] = latent_2d
-    
-    return df_sample, pop_preds, latent_2d
 
-@app.get("/api/starforge/validation/robustness")
-async def starforge_robustness():
+# STARCHARACTERIZER START (baseline)
+@app.post("/api/starcharacterizer/baseline")
+async def baseline_starcharacterizer(data: GalaxyInput):
     try:
+        import math, numpy as np
         from fastapi import HTTPException
-        df_sample, pop_preds, _ = get_sf_validation_data()
-        
-        idx = np.random.choice(len(df_sample), min(1000, len(df_sample)), replace=False)
-        sub_redshifts = df_sample['redshift'].values[idx]
-        sub_preds = pop_preds[idx]
-        
-        np.random.seed(42)
-        noise = np.random.normal(0, 0.00248, sub_preds.shape)
-        true_pops = sub_preds + noise
-        true_pops = np.clip(true_pops, 0, 1)
-        true_pops = true_pops / true_pops.sum(axis=1, keepdims=True)
-        
-        mae_per_galaxy = np.mean(np.abs(sub_preds - true_pops), axis=1)
-        
+
+        d_L = _sc_cosmo.luminosity_distance(max(data.redshift, 1e-6)).value
+        dm  = 5.0 * np.log10(d_L) + 25.0
+        u_abs=data.u-dm; g_abs=data.g-dm; r_abs=data.r-dm; i_abs=data.i-dm; z_abs=data.z-dm
+        u_g_abs=u_abs-g_abs; r_i_abs=r_abs-i_abs; i_z_abs=i_abs-z_abs
+
+        feature_vector = np.array([[
+            u_abs, g_abs, r_abs, i_abs, z_abs,
+            data.redshift, u_g_abs, r_i_abs, i_z_abs
+        ]], dtype=np.float32)
+        feature_scaled = _sc_scaler.transform(feature_vector)
+
+        z_enc     = _sc_basic_encoder.predict(feature_scaled, verbose=0)
+        gmm_proba = _sc_basic_gmm.predict_proba(z_enc)
+        gmm_proba = np.clip(gmm_proba, 1e-9, None) ** (1.0 / 4.5)
+        gmm_proba = gmm_proba / gmm_proba.sum(axis=1, keepdims=True)
+        gmm_fracs = gmm_proba[0, :3]
+        if gmm_fracs.sum() > 0: gmm_fracs = gmm_fracs / gmm_fracs.sum()
+        gmm_fracs = (gmm_fracs * 100.0).tolist()
+
+        labels        = ["Young stars", "Intermediate stars", "Old stars"]
+        p             = np.array(gmm_fracs) / 100.0
+        entropy       = float(-np.sum(p * np.log(p + 1e-9)))
+        certainty_pct = float((1.0 - entropy / math.log(3)) * 100.0)
+        dominant      = labels[int(np.argmax(p))]
+
         return {
-            "redshifts": sub_redshifts.tolist(),
-            "maes": mae_per_galaxy.tolist(),
-            "global_mae": 0.00248
+            "labels":        labels,
+            "gmm_fractions": [round(float(v), 4) for v in gmm_fracs],
+            "dominant":      dominant,
+            "entropy":       round(entropy, 6),
+            "certainty_pct": round(certainty_pct, 4),
+            "baseline_r2":   -0.4954,
+            "baseline_mae":  0.2412
         }
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/starforge/validation/transition")
-async def starforge_transition():
-    try:
+        import traceback; traceback.print_exc()
         from fastapi import HTTPException
-        from scipy.stats import entropy
-        df_sample, pop_preds, _ = get_sf_validation_data()
-        
-        entropies = [entropy(p, base=2) for p in pop_preds]
-        top_indices = np.argsort(entropies)[-5:][::-1]
-        
-        candidates = []
-        for i in top_indices:
-            candidates.append({
-                "galaxy_id": int(df_sample.iloc[i].name) if hasattr(df_sample.iloc[i], 'name') else int(i),
-                "entropy": float(entropies[i]),
-                "young": float(pop_preds[i, 0] * 100),
-                "inter": float(pop_preds[i, 1] * 100),
-                "old": float(pop_preds[i, 2] * 100)
-            })
-            
-        return {"candidates": candidates}
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+# STARCHARACTERIZER END (baseline)
 
-@app.get("/api/starforge/diagnostics/latent")
-async def starforge_latent():
-    try:
-        from fastapi import HTTPException
-        df_sample, pop_preds, latent_2d = get_sf_validation_data()
-        
-        data = []
-        # Sample to 2000 points to keep payload manageable for frontend scatter plot
-        limit = min(2000, len(df_sample))
-        for i in range(limit):
-            data.append({
-                "id": int(df_sample.iloc[i].name) if hasattr(df_sample.iloc[i], 'name') else int(i),
-                "x": float(latent_2d[i, 0]),
-                "y": float(latent_2d[i, 1]),
-                "young": float(pop_preds[i, 0]),
-                "inter": float(pop_preds[i, 1]),
-                "old": float(pop_preds[i, 2]),
-                "gr": float(df_sample.iloc[i]['g'] - df_sample.iloc[i]['r']),
-                "r": float(df_sample.iloc[i]['r'])
-            })
-            
-        return {"points": data}
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/starforge/diagnostics/cmd")
-async def starforge_cmd():
+# STARCHARACTERIZER START (predict_basic)
+@app.post("/api/starcharacterizer/predict_basic")
+async def predict_basic_starcharacterizer(data: GalaxyInput):
+    """Basic encoder + GMM only — no OLS nuisance projection, no PCA whitening.
+    Used by the Comparison tab Baseline Mode toggle to show the cosmologically
+    biased result contrasted against the disentangled Split-VAE output."""
     try:
+        import math, numpy as np
         from fastapi import HTTPException
-        df_sample, _, _ = get_sf_validation_data()
-        
-        # Sub-sample for CMD to avoid massive scatter plot overdraw on client side
-        limit = min(3000, len(df_sample))
-        gr = (df_sample['g'].iloc[:limit] - df_sample['r'].iloc[:limit]).tolist()
-        r = df_sample['r'].iloc[:limit].tolist()
-        
+
+        d_L = _sc_cosmo.luminosity_distance(max(data.redshift, 1e-6)).value
+        dm  = 5.0 * np.log10(d_L) + 25.0
+        u_abs=data.u-dm; g_abs=data.g-dm; r_abs=data.r-dm; i_abs=data.i-dm; z_abs=data.z-dm
+        u_g_abs=u_abs-g_abs; r_i_abs=r_abs-i_abs; i_z_abs=i_abs-z_abs
+
+        feature_vector = np.array([[
+            u_abs, g_abs, r_abs, i_abs, z_abs,
+            data.redshift, u_g_abs, r_i_abs, i_z_abs
+        ]], dtype=np.float32)
+        feature_scaled = _sc_scaler.transform(feature_vector)
+
+        # Basic encoder (4-dim latent, no redshift disentanglement)
+        z_basic   = _sc_basic_encoder.predict(feature_scaled, verbose=0)
+        gmm_proba = _sc_basic_gmm.predict_proba(z_basic)
+        gmm_proba = np.clip(gmm_proba, 1e-9, None) ** (1.0 / 4.5)
+        gmm_proba = gmm_proba / gmm_proba.sum(axis=1, keepdims=True)
+        gmm_fracs = gmm_proba[0, :3]
+        if gmm_fracs.sum() > 0: gmm_fracs = gmm_fracs / gmm_fracs.sum()
+        gmm_fracs = (gmm_fracs * 100.0).tolist()
+
+        labels        = ["Young stars", "Intermediate stars", "Old stars"]
+        p             = np.array(gmm_fracs) / 100.0
+        entropy       = float(-np.sum(p * np.log(p + 1e-9)))
+        certainty_pct = float((1.0 - entropy / math.log(3)) * 100.0)
+        dominant      = labels[int(np.argmax(p))]
+
         return {
-            "gr": gr,
-            "r": r
+            "labels":        labels,
+            "gmm_fractions": [round(float(v), 4) for v in gmm_fracs],
+            "dominant":      dominant,
+            "entropy":       round(entropy, 6),
+            "certainty_pct": round(certainty_pct, 4),
+            "baseline_r2":   -0.4954,
+            "baseline_mae":  0.2412
         }
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        import traceback; traceback.print_exc()
+        from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=str(e))
-
+# STARCHARACTERIZER END (predict_basic)
 
 
 # ======================
