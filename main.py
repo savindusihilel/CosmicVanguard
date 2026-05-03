@@ -34,7 +34,7 @@ CONTEXT_DIM = 64
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
-GALAXY_ASSETS_DIR = os.path.join(ASSETS_DIR, "galaxy")
+GALAXY_ASSETS_DIR = os.environ.get("GALAXY_ASSETS_DIR", os.path.join(ASSETS_DIR, "galaxy"))
 TRANSIENT_ASSETS_DIR = os.path.join(ASSETS_DIR, "transient")
 QUASAR_ASSETS_DIR = os.path.join(ASSETS_DIR, "quasarwatch")
 # STARCHARACTERIZER START

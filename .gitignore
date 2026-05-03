@@ -27,3 +27,5 @@ assets/*.joblib
 
 # Node
 node_modules/
+assets/galaxy/rf_mass.joblib
+assets/galaxy/rf_sfr.joblib
