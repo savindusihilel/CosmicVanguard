@@ -1,0 +1,5 @@
+Configuration,R2,Mean Pearson r
+"Baseline VAE (no GRL, no HSIC)",0.8812,0.321
+VAE + GRL,0.9205,0.154
+VAE + GRL + HSIC,0.961,0.082
+Full Model (GRL + HSIC + OLS projection),0.9795,0.0297
