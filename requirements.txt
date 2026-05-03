@@ -12,3 +12,4 @@ uvicorn[standard]
 pydantic
 httpx
 python-multipart
+astropy
